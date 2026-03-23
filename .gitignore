@@ -55,3 +55,9 @@ data/
 *.war
 *.ear
 hs_err_pid*
+
+# Sonstiges
+.classpath
+.factorypath
+.project
+.settings/
