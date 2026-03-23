@@ -1,0 +1,46 @@
+Estimate the given user story considering generated acceptance and tests by providing separate story points for Development and Testing, then calculate the total.
+
+**Technical Context (if any):**
+[Relevant tech stack, dependencies, existing code complexity]
+
+---
+
+Please estimate using the Fibonacci scale (1, 2, 3, 5, 8, 13, 21):
+-- 1 story point -> very small
+-- 13 story points -> very big, but potentially feaseable within one sprint
+-- 21 story points -> to big for one sprint -> not sprint ready -> recut / replan by product owner
+
+### DEVELOPMENT ESTIMATION
+Consider:
+- Code complexity & logic
+- Number of components/layers affected
+- Database changes
+- API integrations
+- Technical uncertainty/unknowns
+
+**Development Points:** [X]
+**Reasoning:** [Brief explanation]
+
+### TESTING ESTIMATION
+Consider:
+- Number of test scenarios
+- Unit test coverage needed
+- Integration/E2E testing complexity
+- Test data setup requirements
+- Edge cases & negative testing
+
+**Testing Points:** [X]
+**Reasoning:** [Brief explanation]
+
+---
+
+### TOTAL ESTIMATION
+| Component   | Points |
+|-------------|--------|
+| Development | X      |
+| Testing     | X      |
+| **TOTAL**   | **X**  |
+
+**Risks/Assumptions:**
+[List any assumptions or risks that could affect the estimate]
+```

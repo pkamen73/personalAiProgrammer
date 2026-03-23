@@ -1,0 +1,17 @@
+USER STORY:
+[Paste your user story here]
+
+Requirements for the acceptance criteria:
+1. Cover the happy path (expected successful behavior)
+2. Include edge cases and boundary conditions
+3. Address error handling scenarios
+4. Consider validation rules if applicable
+5. Keep each criterion testable and specific
+6. Use clear, unambiguous language
+
+Format each criterion as:
+- **AC[number]**: [Brief title]
+  - Given: [precondition/context]
+  - When: [action/trigger]
+  - Then: [expected outcome]
+  

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+echo "🔨 Building application..."
+mvn clean package -DskipTests
+
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed!"
+  exit 1
+fi
+
+echo "✅ Build successful!"
+
+# Stop existing instance if running
+PID=$(lsof -ti:8080)
+if [ ! -z "$PID" ]; then
+  echo "🛑 Stopping existing instance (PID: $PID)..."
+  kill $PID
+  sleep 2
+fi
+
+echo "🚀 Starting application..."
+java -jar target/ai-ide-assistant-0.0.1-SNAPSHOT.jar .

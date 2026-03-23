@@ -1,0 +1,36 @@
+## Default Definition of Done (DoD) for User Story Development
+
+A user story is **done** when it meets all these criteria:
+
+### Code Quality
+
+- [ ] **Code complete** - All acceptance criteria implemented
+- [ ] **Code reviewed** - Peer review approved
+- [ ] **Coding standards followed** - Consistent with team conventions
+- [ ] **No known defects** - No critical/major bugs remaining
+
+### Testing
+
+- [ ] **Unit tests written** - Adequate coverage for new code
+- [ ] **Unit tests passing** - All tests green
+- [ ] **Integration tests passing** (if applicable)
+- [ ] **QA tested** - Tested by QA or team member other than developer
+- [ ] **Acceptance criteria verified** - All conditions met
+
+### Technical
+
+- [ ] **Builds successfully** - No build errors in CI/CD pipeline
+- [ ] **Merged to main branch** - Code integrated to development/main
+- [ ] **No regressions** - Existing functionality unaffected
+- [ ] **Performance acceptable** - No significant performance degradation
+
+### Documentation
+
+- [ ] **Code documented** - Comments/docstrings where needed
+- [ ] **Technical documentation updated** (if applicable)
+- [ ] **User documentation updated** (if applicable)
+
+### Deployment
+
+- [ ] **Deployed to staging/test environment**
+- [ ] **Ready for production deployment**

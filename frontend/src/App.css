@@ -1,0 +1,61 @@
+.app {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  position: relative;
+  transition: background var(--transition-speed), color var(--transition-speed);
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-speed);
+}
+
+.theme-toggle:hover {
+  background: var(--accent-primary);
+  transform: scale(1.05);
+}
+
+.split-horizontal,
+.split-vertical {
+  height: 100%;
+  display: flex;
+}
+
+.split-horizontal {
+  flex-direction: column;
+}
+
+.split-vertical {
+  flex-direction: row;
+}
+
+.gutter {
+  background-color: var(--gutter-bg);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transition: background var(--transition-speed);
+}
+
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+}
+
+.gutter.gutter-vertical {
+  cursor: row-resize;
+}
