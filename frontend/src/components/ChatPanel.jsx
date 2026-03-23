@@ -4,6 +4,7 @@ import { getOllamaModels } from '../services/modelApi'
 import { getAllModelConfigs } from '../services/modelConfigApi'
 import { getFile } from '../services/fileApi'
 import ModelConfigManager from './ModelConfigManager'
+import MessageContent from './MessageContent'
 import './ChatPanel.css'
 
 const ChatPanel = () => {
@@ -182,10 +183,7 @@ const ChatPanel = () => {
         </select>
         <button 
           className="settings-button"
-          onClick={() => {
-            console.log('Settings button clicked!')
-            setShowConfigManager(true)
-          }}
+          onClick={() => setShowConfigManager(true)}
           title="Manage model configurations"
         >
           ⚙️ Settings
@@ -245,7 +243,7 @@ const ChatPanel = () => {
                 ))}
               </div>
             )}
-            <div className="message-content">{msg.content}</div>
+            <MessageContent content={msg.content} />
             <div className="message-time">
               {new Date(msg.timestamp).toLocaleTimeString()}
             </div>

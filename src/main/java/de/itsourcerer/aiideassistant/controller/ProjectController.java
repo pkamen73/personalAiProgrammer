@@ -1,10 +1,14 @@
 package de.itsourcerer.aiideassistant.controller;
 
+import de.itsourcerer.aiideassistant.model.JavaFileInfo;
 import de.itsourcerer.aiideassistant.model.ProjectNode;
+import de.itsourcerer.aiideassistant.service.ProjectAnalyzerService;
 import de.itsourcerer.aiideassistant.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/project")
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectAnalyzerService projectAnalyzerService;
 
     @GetMapping("/tree")
     public ResponseEntity<ProjectNode> getProjectTree(@RequestParam(required = false) String path) {
@@ -29,5 +34,11 @@ public class ProjectController {
     public ResponseEntity<Void> delete(@RequestParam String path) {
         projectService.delete(path);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/analyze")
+    public ResponseEntity<List<JavaFileInfo>> analyzeProject() {
+        List<JavaFileInfo> analysis = projectAnalyzerService.analyzeProject();
+        return ResponseEntity.ok(analysis);
     }
 }

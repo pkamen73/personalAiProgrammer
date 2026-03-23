@@ -3,6 +3,7 @@ package de.itsourcerer.aiideassistant.service;
 import de.itsourcerer.aiideassistant.entity.ModelConfiguration;
 import de.itsourcerer.aiideassistant.model.ChatMessage;
 import de.itsourcerer.aiideassistant.model.FileContext;
+import de.itsourcerer.aiideassistant.model.JavaFileInfo;
 import de.itsourcerer.aiideassistant.model.ModelConfig;
 import de.itsourcerer.aiideassistant.service.provider.ModelProvider;
 import de.itsourcerer.aiideassistant.service.provider.OllamaProvider;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -22,22 +24,16 @@ public class ChatService {
     private final ModelProviderService modelProviderService;
     private final ModelConfigService modelConfigService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ProjectAnalyzerService projectAnalyzerService;
 
     public void processMessageStreaming(ChatMessage userMessage, Long modelConfigId, String ollamaModel) {
-        System.out.println("=== ChatService.processMessageStreaming ===");
-        System.out.println("modelConfigId: " + modelConfigId);
-        System.out.println("ollamaModel: " + ollamaModel);
-        
         String messageId = UUID.randomUUID().toString();
         String promptWithContext = buildPromptWithFileContext(userMessage);
         
         if (ollamaModel != null && !ollamaModel.isEmpty()) {
-            System.out.println("Using Ollama path");
             handleOllamaStreaming(messageId, promptWithContext, ollamaModel, userMessage.getConversationId());
             return;
         }
-        
-        System.out.println("Using cloud model path");
         
         ModelConfiguration dbConfig = modelConfigId != null 
             ? modelConfigService.getConfigById(modelConfigId).orElseThrow(() -> new RuntimeException("Model config not found"))
@@ -129,8 +125,27 @@ public class ChatService {
     private String buildPromptWithFileContext(ChatMessage message) {
         StringBuilder prompt = new StringBuilder();
         
+        try {
+            List<JavaFileInfo> projectInfo = projectAnalyzerService.analyzeProject();
+            if (!projectInfo.isEmpty()) {
+                prompt.append("=== PROJECT STRUCTURE ===\n");
+                prompt.append("You are working on a Java project with ").append(projectInfo.size()).append(" files:\n\n");
+                
+                for (JavaFileInfo info : projectInfo) {
+                    prompt.append("- ").append(info.getPath());
+                    if (info.getClassName() != null && !info.getClassName().isEmpty()) {
+                        prompt.append(" (").append(info.getClassName()).append(")");
+                    }
+                    prompt.append("\n");
+                }
+                prompt.append("\n");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to analyze project: " + e.getMessage());
+        }
+        
         if (message.getFileContext() != null && !message.getFileContext().isEmpty()) {
-            prompt.append("Here are the files for context:\n\n");
+            prompt.append("=== FILES FOR CONTEXT ===\n\n");
             
             for (FileContext file : message.getFileContext()) {
                 prompt.append("File: ").append(file.getPath()).append("\n");
@@ -138,11 +153,14 @@ public class ChatService {
                 prompt.append(file.getContent()).append("\n");
                 prompt.append("```\n\n");
             }
-            
-            prompt.append("User question: ");
         }
         
+        prompt.append("=== INSTRUCTIONS ===\n");
+        prompt.append("When providing Java code, always include the file path as a comment at the top:\n");
+        prompt.append("// File: src/main/java/com/example/MyClass.java\n\n");
+        prompt.append("=== USER REQUEST ===\n");
         prompt.append(message.getContent());
+        
         return prompt.toString();
     }
 }
