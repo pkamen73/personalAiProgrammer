@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { getProjectTree } from '../services/projectApi'
 import './FileTree.css'
 
-const FileTree = ({ onFileSelect, modifiedFiles = new Set() }) => {
+const FileTree = forwardRef(({ onFileSelect, modifiedFiles = new Set() }, ref) => {
   const [tree, setTree] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
 
@@ -18,6 +18,10 @@ const FileTree = ({ onFileSelect, modifiedFiles = new Set() }) => {
       console.error('Failed to load project tree:', error)
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    refresh: loadTree
+  }))
 
   const toggleExpand = (path) => {
     const newExpanded = new Set(expanded)
@@ -83,6 +87,6 @@ const FileTree = ({ onFileSelect, modifiedFiles = new Set() }) => {
       </div>
     </div>
   )
-}
+})
 
 export default FileTree

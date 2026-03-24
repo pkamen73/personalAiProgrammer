@@ -5,9 +5,10 @@ import { getAllModelConfigs } from '../services/modelConfigApi'
 import { getFile } from '../services/fileApi'
 import ModelConfigManager from './ModelConfigManager'
 import MessageContent from './MessageContent'
+import MindmapModal from './MindmapModal'
 import './ChatPanel.css'
 
-const ChatPanel = () => {
+const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [connected, setConnected] = useState(false)
@@ -16,6 +17,7 @@ const ChatPanel = () => {
   const [cloudConfigs, setCloudConfigs] = useState([])
   const [attachedFiles, setAttachedFiles] = useState([])
   const [showConfigManager, setShowConfigManager] = useState(false)
+  const [showMindmapModal, setShowMindmapModal] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -188,12 +190,23 @@ const ChatPanel = () => {
         >
           ⚙️ Settings
         </button>
+        <button 
+          className="settings-button"
+          onClick={() => setShowMindmapModal(true)}
+          title="Analyze mindmap"
+        >
+          📊 Mindmap
+        </button>
       </div>
       
       <ModelConfigManager 
         isOpen={showConfigManager}
         onClose={() => setShowConfigManager(false)}
         onConfigsUpdated={loadCloudConfigs}
+      />
+      <MindmapModal 
+        isOpen={showMindmapModal}
+        onClose={() => setShowMindmapModal(false)}
       />
       <div 
         className={`context-drop-zone ${isDraggingOver ? 'dragging-over' : ''} ${attachedFiles.length > 0 ? 'has-files' : ''}`}
@@ -243,7 +256,11 @@ const ChatPanel = () => {
                 ))}
               </div>
             )}
-            <MessageContent content={msg.content} />
+            <MessageContent 
+              content={msg.content}
+              onFileOpen={onFileOpen}
+              onRefreshTree={onRefreshTree}
+            />
             <div className="message-time">
               {new Date(msg.timestamp).toLocaleTimeString()}
             </div>

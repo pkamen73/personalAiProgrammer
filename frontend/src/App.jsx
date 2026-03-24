@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Split from 'react-split'
 import FileTree from './components/FileTree'
 import EditorPanel from './components/EditorPanel'
@@ -13,6 +13,7 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'dark'
   })
+  const fileTreeRef = useRef(null)
 
   useEffect(() => {
     localStorage.setItem('theme', theme)
@@ -43,6 +44,12 @@ function App() {
     })
   }
 
+  const handleRefreshTree = () => {
+    if (fileTreeRef.current && fileTreeRef.current.refresh) {
+      fileTreeRef.current.refresh()
+    }
+  }
+
   return (
     <div className={`app theme-${theme}`}>
       <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -60,6 +67,7 @@ function App() {
           minSize={200}
         >
           <FileTree 
+            ref={fileTreeRef}
             onFileSelect={handleFileOpen}
             modifiedFiles={modifiedFiles}
           />
@@ -72,7 +80,10 @@ function App() {
             setModifiedFiles={setModifiedFiles}
             theme={theme}
           />
-          <ChatPanel />
+          <ChatPanel 
+            onFileOpen={handleFileOpen}
+            onRefreshTree={handleRefreshTree}
+          />
         </Split>
         <TerminalPanel theme={theme} />
       </Split>

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { applyCode } from '../services/codeApi'
 import './MessageContent.css'
 
-const MessageContent = ({ content }) => {
+const MessageContent = ({ content, onFileOpen, onRefreshTree }) => {
   const [applying, setApplying] = useState(false)
 
   const parseContent = () => {
@@ -56,7 +56,6 @@ const MessageContent = ({ content }) => {
     setApplying(true)
     try {
       console.log('Applying code to:', path)
-      console.log('Code length:', code.length)
       
       const changes = [{
         path,
@@ -65,9 +64,19 @@ const MessageContent = ({ content }) => {
         changeType: 'MODIFY'
       }]
       
-      console.log('Sending changes:', changes)
       await applyCode(changes)
-      console.log('✅ Apply successful')
+      console.log('✅ Code applied')
+      
+      if (onRefreshTree) {
+        console.log('Refreshing project tree...')
+        onRefreshTree()
+      }
+      
+      if (onFileOpen) {
+        console.log('Opening file in editor:', path)
+        onFileOpen(path)
+      }
+      
       alert(`✅ Code applied to ${path}`)
     } catch (error) {
       console.error('Failed to apply code:', error)

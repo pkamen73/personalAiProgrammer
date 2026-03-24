@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: ai-ide-assistant
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   datasource:
     url: jdbc:h2:file:./data/ai-ide-assistant
     driver-class-name: org.h2.Driver
