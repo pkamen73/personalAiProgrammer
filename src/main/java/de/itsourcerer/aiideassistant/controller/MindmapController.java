@@ -88,14 +88,21 @@ public class MindmapController {
                 .filter(p -> p.toString().endsWith(".txt"))
                 .map(p -> {
                     String filename = p.getFileName().toString();
+                    String diagramFilename = filename.replace(".txt", ".png");
+                    Path diagramPath = diagramDir.resolve(diagramFilename);
+                    
                     try {
                         String modified = Files.getLastModifiedTime(p).toString();
+                        boolean hasDiagram = Files.exists(diagramPath);
+                        
                         return Map.of(
                             "filename", filename,
-                            "modified", modified
+                            "modified", modified,
+                            "diagramUrl", hasDiagram ? "/api/images/" + diagramFilename : "",
+                            "hasDiagram", String.valueOf(hasDiagram)
                         );
                     } catch (Exception e) {
-                        return Map.of("filename", filename);
+                        return Map.of("filename", filename, "hasDiagram", "false");
                     }
                 })
                 .collect(Collectors.toList());

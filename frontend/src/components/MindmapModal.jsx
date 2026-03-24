@@ -185,28 +185,36 @@ const MindmapModal = ({ isOpen, onClose }) => {
           {savedAnalyses.length > 0 && (
             <div className="mindmap-load">
               <h3>Or Load Existing:</h3>
-              <div style={{display: 'flex', gap: '8px'}}>
-                <select 
-                  value={selectedAnalysis}
-                  onChange={(e) => setSelectedAnalysis(e.target.value)}
-                  className="analysis-selector"
-                  style={{flex: 1}}
-                >
-                  <option value="">-- Select saved analysis --</option>
-                  {savedAnalyses.map((analysis, idx) => (
-                    <option key={idx} value={analysis.filename}>
-                      {analysis.filename}
-                    </option>
-                  ))}
-                </select>
-                <button 
-                  onClick={handleLoadAnalysis}
-                  className="btn-primary"
-                  disabled={!selectedAnalysis}
-                >
-                  📥 Load
-                </button>
+              <div className="analysis-gallery">
+                {savedAnalyses.map((analysis, idx) => (
+                  <div 
+                    key={idx}
+                    className={`analysis-card ${selectedAnalysis === analysis.filename ? 'selected' : ''}`}
+                    onClick={() => setSelectedAnalysis(analysis.filename)}
+                    onDoubleClick={handleLoadAnalysis}
+                  >
+                    {analysis.diagramUrl ? (
+                      <img src={analysis.diagramUrl} alt="Diagram preview" className="analysis-thumbnail" />
+                    ) : (
+                      <div className="analysis-no-preview">📄 No Preview</div>
+                    )}
+                    <div className="analysis-info">
+                      <div className="analysis-filename">{analysis.filename.substring(0, 20)}...</div>
+                      {analysis.modified && (
+                        <div className="analysis-date">{new Date(analysis.modified).toLocaleDateString()}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+              <button 
+                onClick={handleLoadAnalysis}
+                className="btn-primary"
+                disabled={!selectedAnalysis}
+                style={{marginTop: '12px'}}
+              >
+                📥 Load Selected
+              </button>
             </div>
           )}
             </>
