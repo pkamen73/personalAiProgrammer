@@ -23,7 +23,8 @@ public class DiagramGenerationService {
     private String workspaceRoot;
 
     private static final String DIAGRAMS_DIR = ".ai-ide/diagrams";
-    private static final Pattern PLANTUML_PATTERN = Pattern.compile("```(?:plantuml)?\\n(@startuml[\\s\\S]*?@enduml)\\n```", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PLANTUML_PATTERN = Pattern.compile("```(?:plantuml)?\\s*\\n?(@startuml[\\s\\S]*?@enduml)\\s*\\n?```", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PLANTUML_NAKED = Pattern.compile("(@startuml[\\s\\S]*?@enduml)", Pattern.CASE_INSENSITIVE);
 
     @PostConstruct
     public void init() {
@@ -79,10 +80,24 @@ public class DiagramGenerationService {
     }
 
     private String extractPlantUML(String text) {
+        System.out.println("=== Extracting PlantUML ===");
+        System.out.println("Text length: " + text.length());
+        System.out.println("Text preview: " + text.substring(0, Math.min(300, text.length())));
+        
         Matcher matcher = PLANTUML_PATTERN.matcher(text);
         if (matcher.find()) {
+            System.out.println("✓ Matched with PLANTUML_PATTERN (code block)");
             return matcher.group(1);
         }
+        
+        System.out.println("Code block pattern failed, trying naked pattern...");
+        matcher = PLANTUML_NAKED.matcher(text);
+        if (matcher.find()) {
+            System.out.println("✓ Matched with PLANTUML_NAKED");
+            return matcher.group(1);
+        }
+        
+        System.out.println("✗ No PlantUML patterns matched");
         return null;
     }
 

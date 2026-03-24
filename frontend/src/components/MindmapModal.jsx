@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { uploadImage, analyzeMindmap, generateDiagram, getAnalyses, loadAnalysis, previewDiagram } from '../services/mindmapApi'
+import { getAllPrompts } from '../services/analysisPromptApi'
 import './MindmapModal.css'
 
 const MindmapModal = ({ isOpen, onClose }) => {
   const [imageFile, setImageFile] = useState(null)
   const [imageId, setImageId] = useState(null)
   const [modelType, setModelType] = useState('local')
+  const [prompts, setPrompts] = useState([])
+  const [selectedPromptId, setSelectedPromptId] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [editedAnalysis, setEditedAnalysis] = useState('')
@@ -19,6 +22,7 @@ const MindmapModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       loadSavedAnalyses()
+      loadPrompts()
     }
   }, [isOpen])
 
@@ -28,6 +32,19 @@ const MindmapModal = ({ isOpen, onClose }) => {
       setSavedAnalyses(data)
     } catch (error) {
       console.error('Failed to load analyses:', error)
+    }
+  }
+
+  const loadPrompts = async () => {
+    try {
+      const data = await getAllPrompts()
+      setPrompts(data)
+      const defaultPrompt = data.find(p => p.isDefault)
+      if (defaultPrompt) {
+        setSelectedPromptId(defaultPrompt.id)
+      }
+    } catch (error) {
+      console.error('Failed to load prompts:', error)
     }
   }
 
@@ -99,7 +116,7 @@ const MindmapModal = ({ isOpen, onClose }) => {
     
     setAnalyzing(true)
     try {
-      const data = await analyzeMindmap(imageId, modelType)
+      const data = await analyzeMindmap(imageId, modelType, selectedPromptId)
       setAnalysisResult(data.analysis)
       setEditedAnalysis(data.analysis)
       alert('✅ Analysis complete - Review and edit if needed')
@@ -136,14 +153,19 @@ const MindmapModal = ({ isOpen, onClose }) => {
     setSelectedAnalysis('')
   }
 
+  const handleClose = () => {
+    handleNewAnalysis()
+    onClose()
+  }
+
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content mindmap-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>📊 Mindmap Analysis</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={handleClose}>×</button>
         </div>
 
         <div className="modal-body">
@@ -193,6 +215,24 @@ const MindmapModal = ({ isOpen, onClose }) => {
           {imageId && !analysisResult && (
             <div className="mindmap-analyze">
               <h3>2. Select Model & Analyze</h3>
+              <div className="prompt-selector-section">
+                <label style={{fontWeight: 600, fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'}}>
+                  Analysis Intent:
+                </label>
+                <select
+                  value={selectedPromptId || ''}
+                  onChange={(e) => setSelectedPromptId(Number(e.target.value))}
+                  className="analysis-selector"
+                  style={{marginBottom: '16px'}}
+                >
+                  {prompts.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} - {p.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="model-selector-group">
                 <label className="model-option">
                   <input

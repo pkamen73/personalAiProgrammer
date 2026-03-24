@@ -31,10 +31,12 @@ public class MindmapController {
             System.out.println("=== Mindmap Analysis Request ===");
             String imageId = request.get("imageId");
             String modelType = request.getOrDefault("modelType", "local");
+            Long promptId = request.containsKey("promptId") ? Long.parseLong(request.get("promptId")) : null;
             System.out.println("ImageId: " + imageId);
             System.out.println("Model type: " + modelType);
+            System.out.println("Prompt ID: " + promptId);
             
-            String analysis = mindmapAnalysisService.analyzeMindmap(imageId, modelType);
+            String analysis = mindmapAnalysisService.analyzeMindmap(imageId, modelType, promptId);
             System.out.println("✓ Analysis complete, length: " + analysis.length());
             
             return ResponseEntity.ok(Map.of("analysis", analysis));

@@ -35,17 +35,23 @@ const ModelConfigManager = ({ isOpen, onClose, onConfigsUpdated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log('Form submitted:', formData)
     try {
       if (editingConfig) {
+        console.log('Updating config:', editingConfig.id)
         await updateModelConfig(editingConfig.id, formData)
       } else {
-        await createModelConfig(formData)
+        console.log('Creating new config')
+        const result = await createModelConfig(formData)
+        console.log('Created:', result)
       }
       await loadConfigs()
       onConfigsUpdated && onConfigsUpdated()
       resetForm()
+      alert('✅ Configuration saved')
     } catch (error) {
       console.error('Failed to save config:', error)
+      alert('❌ Failed to save: ' + error.message)
     }
   }
 

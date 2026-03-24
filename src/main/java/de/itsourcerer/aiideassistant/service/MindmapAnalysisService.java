@@ -13,29 +13,33 @@ public class MindmapAnalysisService {
 
     private final ImageStorageService imageStorageService;
     private final ModelConfigService modelConfigService;
+    private final AnalysisPromptService promptService;
     private final WebClient webClient = WebClient.builder().build();
     
     private static final String OLLAMA_CHAT_URL = "http://localhost:11434/api/chat";
     private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
     private static final String VISION_MODEL_LOCAL = "qwen3-vl:4b";
-    private static final String PROMPT = "Analyze and summarize this mind map. Identify key concepts, relationships, and hierarchy. Output a PlantUML class diagram representing the structure.";
 
-    public String analyzeMindmap(String imageId, String modelType) throws Exception {
+    public String analyzeMindmap(String imageId, String modelType, Long promptId) throws Exception {
+        String prompt = promptId != null 
+            ? promptService.getPromptById(promptId).orElseThrow().getContent()
+            : promptService.getDefaultPrompt().orElseThrow().getContent();
+        
         if ("cloud".equalsIgnoreCase(modelType)) {
-            return analyzeMindmapCloud(imageId);
+            return analyzeMindmapCloud(imageId, prompt);
         } else {
-            return analyzeMindmapLocal(imageId);
+            return analyzeMindmapLocal(imageId, prompt);
         }
     }
 
-    private String analyzeMindmapLocal(String imageId) throws Exception {
+    private String analyzeMindmapLocal(String imageId, String prompt) throws Exception {
         System.out.println("Loading image: " + imageId);
         String base64Image = imageStorageService.imageToBase64(imageId);
         System.out.println("✓ Image loaded, base64 length: " + base64Image.length());
         
         Map<String, Object> message = Map.of(
             "role", "user",
-            "content", PROMPT,
+            "content", prompt,
             "images", List.of(base64Image)
         );
         
@@ -75,7 +79,7 @@ public class MindmapAnalysisService {
         }
     }
 
-    private String analyzeMindmapCloud(String imageId) throws Exception {
+    private String analyzeMindmapCloud(String imageId, String prompt) throws Exception {
         System.out.println("Loading image for cloud analysis: " + imageId);
         String base64Image = imageStorageService.imageToBase64(imageId);
         System.out.println("✓ Image loaded, base64 length: " + base64Image.length());
@@ -91,7 +95,7 @@ public class MindmapAnalysisService {
         Map<String, Object> message = Map.of(
             "role", "user",
             "content", List.of(
-                Map.of("type", "text", "text", PROMPT),
+                Map.of("type", "text", "text", prompt),
                 Map.of("type", "image_url", "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image))
             )
         );

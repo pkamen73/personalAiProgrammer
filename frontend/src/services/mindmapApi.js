@@ -10,8 +10,12 @@ export const uploadImage = async (file) => {
   return response.data
 }
 
-export const analyzeMindmap = async (imageId, modelType = 'local') => {
-  const response = await axios.post('/api/mindmap/analyze', { imageId, modelType })
+export const analyzeMindmap = async (imageId, modelType = 'local', promptId = null) => {
+  const response = await axios.post('/api/mindmap/analyze', { 
+    imageId, 
+    modelType,
+    promptId: promptId ? String(promptId) : null
+  })
   return response.data
 }
 
