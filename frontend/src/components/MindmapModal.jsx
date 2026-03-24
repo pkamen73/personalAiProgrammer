@@ -18,6 +18,9 @@ const MindmapModal = ({ isOpen, onClose }) => {
   const [selectedAnalysis, setSelectedAnalysis] = useState('')
   const [previewImage, setPreviewImage] = useState(null)
   const [previewing, setPreviewing] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [replaceText, setReplaceText] = useState('')
 
   useEffect(() => {
     if (isOpen) {
@@ -141,6 +144,16 @@ const MindmapModal = ({ isOpen, onClose }) => {
     } finally {
       setGenerating(false)
     }
+  }
+
+  const matchCount = searchText
+    ? (editedAnalysis.match(new RegExp(searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+    : 0
+
+  const handleReplaceAll = () => {
+    if (!searchText) return
+    const escaped = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    setEditedAnalysis(editedAnalysis.replaceAll(new RegExp(escaped, 'g'), replaceText))
   }
 
   const handleNewAnalysis = () => {
@@ -278,7 +291,59 @@ const MindmapModal = ({ isOpen, onClose }) => {
               <h3>3. Review & Edit Analysis</h3>
               <div className="review-split-view">
                 <div className="review-editor">
-                  <h4>PlantUML Source (editable)</h4>
+                  <div className="review-editor-header">
+                    <h4>PlantUML Source (editable)</h4>
+                    <button
+                      className={`btn-icon search-toggle ${showSearch ? 'active' : ''}`}
+                      onClick={() => setShowSearch(v => !v)}
+                      title="Search & Replace (Ctrl+H)"
+                    >
+                      🔍
+                    </button>
+                  </div>
+                  {showSearch && (
+                    <div className="search-replace-bar">
+                      <div className="search-row">
+                        <input
+                          className="search-input"
+                          type="text"
+                          placeholder="Search…"
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          autoFocus
+                        />
+                        {searchText && (
+                          <span className="match-count">
+                            {matchCount} match{matchCount !== 1 ? 'es' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="search-row">
+                        <input
+                          className="search-input"
+                          type="text"
+                          placeholder="Replace with…"
+                          value={replaceText}
+                          onChange={(e) => setReplaceText(e.target.value)}
+                        />
+                        <button
+                          className="btn-primary search-btn"
+                          onClick={handleReplaceAll}
+                          disabled={!searchText || matchCount === 0}
+                          title="Replace all occurrences"
+                        >
+                          Replace All
+                        </button>
+                        <button
+                          className="btn-icon search-close"
+                          onClick={() => { setShowSearch(false); setSearchText(''); setReplaceText('') }}
+                          title="Close"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <textarea
                     className="analysis-editor"
                     value={editedAnalysis}
