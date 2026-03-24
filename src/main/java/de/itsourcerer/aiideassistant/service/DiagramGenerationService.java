@@ -12,9 +12,9 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Service
 public class DiagramGenerationService {
@@ -34,7 +34,7 @@ public class DiagramGenerationService {
         System.out.println("PlantUML configured with Smetana (built-in Java renderer)");
     }
 
-    public String generateDiagram(String aiResponse, String originalImageId) throws Exception {
+    public String generateDiagram(String aiResponse, String baseName) throws Exception {
         System.out.println("Attempting to extract PlantUML from response...");
         String plantUmlCode = extractPlantUML(aiResponse);
         
@@ -59,12 +59,14 @@ public class DiagramGenerationService {
         reader.outputImage(pngStream, option);
         
         System.out.println("✓ PlantUML rendered, PNG size: " + pngStream.size() + " bytes");
-        
-        String diagramId = "diagram-" + originalImageId.replace(".", "-") + ".png";
+
         Path diagramDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(DIAGRAMS_DIR);
         System.out.println("Creating diagram directory: " + diagramDir);
         Files.createDirectories(diagramDir);
-        
+
+        String sanitized = baseName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        String diagramId = resolveVersionedFilename(diagramDir, sanitized) + ".png";
+
         Path diagramPath = diagramDir.resolve(diagramId);
         System.out.println("Writing diagram to: " + diagramPath);
         Files.write(diagramPath, pngStream.toByteArray());
@@ -77,6 +79,24 @@ public class DiagramGenerationService {
         System.out.println("✓ Analysis text saved: " + analysisFileName);
         
         return diagramId;
+    }
+
+    private String resolveVersionedFilename(Path diagramDir, String baseName) throws Exception {
+        if (!Files.exists(diagramDir.resolve(baseName + ".png")) &&
+            !Files.exists(diagramDir.resolve(baseName + ".txt"))) {
+            return baseName;
+        }
+        int maxVersion = 1;
+        Pattern versionPattern = Pattern.compile("^" + Pattern.quote(baseName) + "_v(\\d+)$");
+        try (Stream<Path> files = Files.list(diagramDir)) {
+            maxVersion = files
+                .map(p -> p.getFileName().toString())
+                .map(name -> name.replaceFirst("\\.(png|txt)$", ""))
+                .map(stem -> { Matcher m = versionPattern.matcher(stem); return m.matches() ? Integer.parseInt(m.group(1)) : 0; })
+                .max(Integer::compareTo)
+                .orElse(1);
+        }
+        return baseName + "_v" + (maxVersion + 1);
     }
 
     private String extractPlantUML(String text) {

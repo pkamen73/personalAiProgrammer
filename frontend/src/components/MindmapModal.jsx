@@ -1,7 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { uploadImage, analyzeMindmap, generateDiagram, getAnalyses, loadAnalysis, previewDiagram } from '../services/mindmapApi'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { uploadImage, analyzeMindmap, generateDiagram, getAnalyses, loadAnalysis, previewDiagram, deleteAnalysis } from '../services/mindmapApi'
 import { getAllPrompts } from '../services/analysisPromptApi'
 import './MindmapModal.css'
+
+const FilenameInput = ({ onConfirm, onCancel }) => {
+  const [value, setValue] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const submit = () => { if (value.trim()) onConfirm(value.trim()) }
+
+  return (
+    <div className="filename-input-row">
+      <input
+        ref={inputRef}
+        className="search-input"
+        type="text"
+        placeholder="e.g. my-diagram"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel() }}
+      />
+      <button className="btn-primary search-btn" onClick={submit} disabled={!value.trim()}>
+        Save
+      </button>
+      <button className="btn-secondary search-btn" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  )
+}
 
 const MindmapModal = ({ isOpen, onClose }) => {
   const [imageFile, setImageFile] = useState(null)
@@ -21,6 +50,9 @@ const MindmapModal = ({ isOpen, onClose }) => {
   const [showSearch, setShowSearch] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [replaceText, setReplaceText] = useState('')
+  const [contextMenu, setContextMenu] = useState(null)
+  const [diagramBaseName, setDiagramBaseName] = useState('')
+  const [pendingSave, setPendingSave] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -132,10 +164,31 @@ const MindmapModal = ({ isOpen, onClose }) => {
 
   const handleGenerateDiagram = async () => {
     if (!imageId || !editedAnalysis) return
-    
+    if (!diagramBaseName) {
+      setPendingSave(true)
+      return
+    }
     setGenerating(true)
     try {
-      const data = await generateDiagram(imageId, editedAnalysis)
+      const data = await generateDiagram(imageId, editedAnalysis, diagramBaseName)
+      setDiagramResult(data)
+      await loadSavedAnalyses()
+      alert('✅ Diagram and analysis text saved')
+    } catch (error) {
+      alert('❌ Diagram generation failed: ' + error.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleConfirmBaseName = async (name) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setDiagramBaseName(trimmed)
+    setPendingSave(false)
+    setGenerating(true)
+    try {
+      const data = await generateDiagram(imageId, editedAnalysis, trimmed)
       setDiagramResult(data)
       await loadSavedAnalyses()
       alert('✅ Diagram and analysis text saved')
@@ -156,6 +209,36 @@ const MindmapModal = ({ isOpen, onClose }) => {
     setEditedAnalysis(editedAnalysis.replaceAll(new RegExp(escaped, 'g'), replaceText))
   }
 
+  useEffect(() => {
+    if (!contextMenu) return
+    const dismiss = () => setContextMenu(null)
+    window.addEventListener('click', dismiss)
+    window.addEventListener('contextmenu', dismiss)
+    return () => {
+      window.removeEventListener('click', dismiss)
+      window.removeEventListener('contextmenu', dismiss)
+    }
+  }, [contextMenu])
+
+  const handleContextMenu = (e, analysis) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, filename: analysis.filename })
+  }
+
+  const handleDeleteAnalysis = async () => {
+    if (!contextMenu) return
+    const { filename } = contextMenu
+    setContextMenu(null)
+    try {
+      await deleteAnalysis(filename)
+      await loadSavedAnalyses()
+      if (selectedAnalysis === filename) setSelectedAnalysis('')
+    } catch (error) {
+      alert('❌ Delete failed: ' + error.message)
+    }
+  }
+
   const handleNewAnalysis = () => {
     setImageFile(null)
     setImageId(null)
@@ -164,6 +247,8 @@ const MindmapModal = ({ isOpen, onClose }) => {
     setDiagramResult(null)
     setPreviewImage(null)
     setSelectedAnalysis('')
+    setDiagramBaseName('')
+    setPendingSave(false)
   }
 
   const handleClose = () => {
@@ -205,6 +290,7 @@ const MindmapModal = ({ isOpen, onClose }) => {
                     className={`analysis-card ${selectedAnalysis === analysis.filename ? 'selected' : ''}`}
                     onClick={() => setSelectedAnalysis(analysis.filename)}
                     onDoubleClick={handleLoadAnalysis}
+                    onContextMenu={(e) => handleContextMenu(e, analysis)}
                   >
                     {analysis.diagramUrl ? (
                       <img src={analysis.diagramUrl} alt="Diagram preview" className="analysis-thumbnail" />
@@ -364,13 +450,19 @@ const MindmapModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
               </div>
+              {pendingSave && (
+                <div className="filename-prompt">
+                  <label className="filename-prompt-label">Save as</label>
+                  <FilenameInput onConfirm={handleConfirmBaseName} onCancel={() => setPendingSave(false)} />
+                </div>
+              )}
               <div className="review-actions">
                 <button 
                   onClick={handleGenerateDiagram}
                   className="btn-primary"
-                  disabled={generating || !editedAnalysis.trim()}
+                  disabled={generating || !editedAnalysis.trim() || pendingSave}
                 >
-                  {generating ? '⏳ Generating...' : '✓ Generate Diagram'}
+                  {generating ? '⏳ Generating...' : diagramBaseName ? `💾 Save (${diagramBaseName})` : '✓ Generate Diagram'}
                 </button>
                 <button 
                   onClick={() => setEditedAnalysis(analysisResult)}
@@ -419,6 +511,18 @@ const MindmapModal = ({ isOpen, onClose }) => {
           )}
         </div>
       </div>
+
+      {contextMenu && (
+        <ul
+          className="context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <li className="context-menu-item context-menu-item--danger" onClick={handleDeleteAnalysis}>
+            🗑 Delete
+          </li>
+        </ul>
+      )}
     </div>
   )
 }

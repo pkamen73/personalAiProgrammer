@@ -19,10 +19,11 @@ export const analyzeMindmap = async (imageId, modelType = 'local', promptId = nu
   return response.data
 }
 
-export const generateDiagram = async (imageId, analysisText) => {
+export const generateDiagram = async (imageId, analysisText, baseName) => {
   const response = await axios.post('/api/mindmap/generate-diagram', { 
     imageId, 
-    analysisText 
+    analysisText,
+    baseName
   })
   return response.data
 }
@@ -40,4 +41,8 @@ export const loadAnalysis = async (filename) => {
 export const previewDiagram = async (analysisText) => {
   const response = await axios.post('/api/mindmap/preview-diagram', { analysisText })
   return response.data
+}
+
+export const deleteAnalysis = async (filename) => {
+  await axios.delete(`/api/mindmap/analysis/${filename}`)
 }

@@ -428,3 +428,60 @@
   background: var(--accent-hover);
   transform: translateY(-1px);
 }
+
+.filename-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.filename-prompt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filename-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-primary);
+}
+
+.context-menu-item--danger {
+  color: #f47067;
+}
+
+.context-menu-item--danger:hover {
+  background: rgba(244, 112, 103, 0.12);
+}

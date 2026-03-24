@@ -54,10 +54,12 @@ public class MindmapController {
             System.out.println("=== Generate Diagram Request ===");
             String imageId = request.get("imageId");
             String analysisText = request.get("analysisText");
+            String baseName = request.getOrDefault("baseName", "diagram-" + imageId.replace(".", "-"));
             System.out.println("ImageId: " + imageId);
+            System.out.println("BaseName: " + baseName);
             System.out.println("Analysis length: " + (analysisText != null ? analysisText.length() : "null"));
             
-            String diagramId = diagramGenerationService.generateDiagram(analysisText, imageId);
+            String diagramId = diagramGenerationService.generateDiagram(analysisText, baseName);
             String analysisFileName = diagramId.replace(".png", ".txt");
             System.out.println("✓ Diagram generated: " + diagramId);
             System.out.println("✓ Analysis text saved: " + analysisFileName);
@@ -135,6 +137,37 @@ public class MindmapController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                 .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/analysis/{filename}")
+    public ResponseEntity<Void> deleteAnalysis(@PathVariable String filename) {
+        try {
+            if (!filename.endsWith(".txt")) {
+                return ResponseEntity.badRequest().build();
+            }
+            Path diagramDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(".ai-ide/diagrams");
+            Path txtFile = diagramDir.resolve(filename);
+            Path pngFile = diagramDir.resolve(filename.replace(".txt", ".png"));
+
+            if (!txtFile.startsWith(diagramDir)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            boolean deleted = false;
+            if (Files.exists(txtFile)) {
+                Files.delete(txtFile);
+                deleted = true;
+            }
+            if (Files.exists(pngFile)) {
+                Files.delete(pngFile);
+                deleted = true;
+            }
+
+            return deleted ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("✗ Delete analysis failed: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 

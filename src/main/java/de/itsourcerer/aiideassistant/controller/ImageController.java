@@ -43,13 +43,14 @@ public class ImageController {
     public ResponseEntity<byte[]> getImage(@PathVariable String imageId) {
         try {
             byte[] image;
-            if (imageId.startsWith("diagram-")) {
+            try {
                 image = diagramGenerationService.getDiagram(imageId);
-            } else {
+            } catch (Exception e) {
                 image = imageStorageService.getImage(imageId);
             }
+            String contentType = imageId.endsWith(".txt") ? "text/plain" : "image/png";
             return ResponseEntity.ok()
-                    .contentType(MediaType.IMAGE_PNG)
+                    .contentType(MediaType.parseMediaType(contentType))
                     .body(image);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
