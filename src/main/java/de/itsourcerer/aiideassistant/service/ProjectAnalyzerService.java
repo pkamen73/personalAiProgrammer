@@ -35,28 +35,50 @@ public class ProjectAnalyzerService {
     public List<JavaFileInfo> analyzeProject(String overridePath) {
         List<JavaFileInfo> files = new ArrayList<>();
         String root = (overridePath != null && !overridePath.isBlank()) ? overridePath : workspaceHolder.getRootPath();
-        Path rootPath = Paths.get(root).toAbsolutePath();
-        System.out.println("[ProjectAnalyzer] Scanning: " + rootPath);
+        Path rootPath = Paths.get(root).toAbsolutePath().normalize();
+        System.out.println("[ProjectAnalyzer] Scanning path: " + rootPath);
+
+        if (!Files.exists(rootPath)) {
+            System.err.println("[ProjectAnalyzer] Path does not exist: " + rootPath);
+            return files;
+        }
+        if (!Files.isDirectory(rootPath)) {
+            System.err.println("[ProjectAnalyzer] Path is not a directory: " + rootPath);
+            return files;
+        }
 
         try (Stream<Path> paths = Files.walk(rootPath)) {
             paths.filter(p -> p.toString().endsWith(".java"))
-                 .filter(p -> !p.toString().contains("/target/"))
-                 .filter(p -> !p.toString().contains("/."))
+                 .filter(p -> !isExcluded(p))
                  .forEach(path -> {
                      try {
                          JavaFileInfo info = analyzeJavaFile(path, rootPath);
-                         if (info != null) {
-                             files.add(info);
-                         }
+                         if (info != null) files.add(info);
                      } catch (Exception e) {
                          System.err.println("Failed to analyze: " + path + " - " + e.getMessage());
                      }
                  });
         } catch (IOException e) {
-            throw new RuntimeException("Failed to analyze project", e);
+            throw new RuntimeException("Failed to analyze project at " + rootPath, e);
         }
 
+        System.out.println("[ProjectAnalyzer] Found " + files.size() + " Java files in " + rootPath);
         return files;
+    }
+
+    private boolean isExcluded(Path path) {
+        String s = path.toString();
+        return s.contains("/target/")
+            || s.contains("/build/")
+            || s.contains("/out/")
+            || s.contains("/node_modules/")
+            || s.contains("/.git/")
+            || s.contains("/.ai-ide/")
+            || s.contains("/.idea/")
+            || s.contains("/.gradle/")
+            || s.contains("/.mvn/")
+            || s.contains("/bin/classes/")
+            || s.contains("/.class");
     }
 
     private JavaFileInfo analyzeJavaFile(Path filePath, Path rootPath) throws IOException {

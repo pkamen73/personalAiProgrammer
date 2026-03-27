@@ -3,7 +3,7 @@ import { connectChat, sendMessage, setProgressCallback } from '../services/chatA
 import { getOllamaModels } from '../services/modelApi'
 import { getAllModelConfigs } from '../services/modelConfigApi'
 import { getFile } from '../services/fileApi'
-import { analyzeFull, getWorkspaceRoot } from '../services/projectApi'
+import { analyzeFull } from '../services/projectApi'
 import ModelConfigManager from './ModelConfigManager'
 import MessageContent from './MessageContent'
 import MindmapModal from './MindmapModal'
@@ -22,13 +22,12 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [analysisProgress, setAnalysisProgress] = useState(null)
-  const [workspaceRoot, setWorkspaceRoot] = useState(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     loadOllamaModels()
     loadCloudConfigs()
-    getWorkspaceRoot().then(setWorkspaceRoot).catch(() => {})
+
     
     const client = connectChat((message) => {
       if (message.role === 'ASSISTANT') {
@@ -182,7 +181,7 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
     setAnalysisResult(null)
     setAnalysisProgress({ stage: 'STARTING', message: 'Starting analysis…', totalFiles: 0, doneFiles: 0 })
     try {
-      const result = await analyzeFull(ollamaModel, workspaceRoot)
+      const result = await analyzeFull(ollamaModel)
       setAnalysisResult({ ok: true, result })
     } catch (err) {
       setAnalysisResult({ ok: false, error: err.message })
@@ -284,9 +283,15 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
         <div className={`analysis-result-banner ${analysisResult.ok ? 'analysis-result-ok' : 'analysis-result-err'}`}>
           {analysisResult.ok ? (
             <>
-              ✅ Analysis complete — {analysisResult.result.summarizedFiles}/{analysisResult.result.totalFiles} files
-              {analysisResult.result.docsPath && <> · docs: <code>{analysisResult.result.docsPath}</code></>}
-              {analysisResult.result.errors?.length > 0 && <> · {analysisResult.result.errors.length} warning(s)</>}
+              {analysisResult.result.status === 'NO_FILES' ? (
+                <>⚠️ No Java files found in: <code>{analysisResult.result.docsPath}</code></>
+              ) : (
+                <>
+                  ✅ Analysis complete — {analysisResult.result.summarizedFiles}/{analysisResult.result.totalFiles} files
+                  {analysisResult.result.docsPath && <> · docs: <code>{analysisResult.result.docsPath}</code></>}
+                  {analysisResult.result.errors?.length > 0 && <> · {analysisResult.result.errors.length} warning(s)</>}
+                </>
+              )}
             </>
           ) : (
             <>❌ Analysis failed: {analysisResult.error}</>

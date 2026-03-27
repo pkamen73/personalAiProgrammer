@@ -44,60 +44,7 @@
   background: var(--bg-elevated);
 }
 
-.file-tree-path-input-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 8px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border-color);
-}
 
-.file-tree-path-input {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 7px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  font-size: 11px;
-  font-family: 'Menlo', 'Monaco', monospace;
-}
-
-.file-tree-path-input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-}
-
-.file-tree-open-confirm {
-  background: var(--accent-primary);
-  color: #fff;
-  border: none;
-  border-radius: 3px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.file-tree-open-confirm:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.file-tree-open-confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.file-tree-open-error {
-  width: 100%;
-  font-size: 11px;
-  color: #f47067;
-  padding: 2px 2px 0;
-}
 
 .file-tree-content {
   flex: 1;
@@ -148,4 +95,64 @@
   padding: 12px;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.tree-create-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  gap: 4px;
+}
+
+.ft-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.ft-cm-item {
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.ft-cm-item:hover {
+  background: var(--bg-primary);
+}
+
+.ft-cm-danger {
+  color: #f47067;
+}
+
+.ft-cm-danger:hover {
+  background: rgba(244, 112, 103, 0.12);
+}
+
+.ft-cm-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
 }

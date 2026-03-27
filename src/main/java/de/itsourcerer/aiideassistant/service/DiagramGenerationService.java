@@ -1,9 +1,10 @@
 package de.itsourcerer.aiideassistant.service;
 
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
+import lombok.RequiredArgsConstructor;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.SourceStringReader;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -17,10 +18,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Service
+@RequiredArgsConstructor
 public class DiagramGenerationService {
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private de.itsourcerer.aiideassistant.config.WorkspaceHolder workspaceHolder;
+    private final WorkspaceHolder workspaceHolder;
 
     private static final String DIAGRAMS_DIR = ".ai-ide/diagrams";
     private static final Pattern PLANTUML_PATTERN = Pattern.compile("```(?:plantuml)?\\s*\\n?(@startuml[\\s\\S]*?@enduml)\\s*\\n?```", Pattern.CASE_INSENSITIVE);
@@ -28,20 +29,47 @@ public class DiagramGenerationService {
 
     @PostConstruct
     public void init() {
-        System.setProperty("PLANTUML_LIMIT_SIZE", "8192");
+        System.setProperty("PLANTUML_LIMIT_SIZE", "16384");
         System.setProperty("plantuml.include.path", ".");
-        System.setProperty("GRAPHVIZ_DOT", "");
-        System.out.println("PlantUML configured with Smetana (built-in Java renderer)");
+        net.sourceforge.plantuml.OptionFlags.getInstance().setDotExecutable("/dev/null");
+        net.sourceforge.plantuml.dot.GraphvizUtils.setDotExecutable("/dev/null");
+        System.out.println("PlantUML configured: Graphviz disabled, Smetana/ELK only");
     }
 
     public void renderToPng(String plantUmlSource, Path outputPath) throws Exception {
-        String source = plantUmlSource.contains("!pragma layout")
-                ? plantUmlSource
-                : plantUmlSource.replace("@startuml", "@startuml\n!pragma layout smetana");
-        ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
-        new SourceStringReader(source).outputImage(pngStream, new FileFormatOption(FileFormat.PNG));
         Files.createDirectories(outputPath.getParent());
-        Files.write(outputPath, pngStream.toByteArray());
+        Files.write(outputPath, renderWithFallback(plantUmlSource).toByteArray());
+        System.out.println("✓ Rendered → " + outputPath.getFileName());
+    }
+
+    private ByteArrayOutputStream renderWithFallback(String source) throws Exception {
+        String withSmetana = withLayout(source, "smetana");
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            new SourceStringReader(withSmetana).outputImage(out, new FileFormatOption(FileFormat.PNG));
+            if (out.size() > 0) return out;
+        } catch (Exception e) {
+            System.err.println("Smetana render failed (" + e.getClass().getSimpleName() + ": " + e.getMessage() + "), retrying with reduced complexity");
+        }
+        String simplified = simplifyForSmetana(source);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new SourceStringReader(withLayout(simplified, "smetana")).outputImage(out, new FileFormatOption(FileFormat.PNG));
+        if (out.size() > 0) return out;
+        throw new RuntimeException("PlantUML render failed for source (length=" + source.length() + ")");
+    }
+
+    private String simplifyForSmetana(String source) {
+        String stripped = source.replaceAll("(?m)^!pragma layout.*$\\n?", "");
+        if (!stripped.contains("hide members")) {
+            stripped = stripped.replace("@startuml", "@startuml\nhide members");
+        }
+        return stripped;
+    }
+
+    private String withLayout(String source, String layout) {
+        String stripped = source.replaceAll("(?m)^!pragma layout.*$\\n?", "");
+        return layout == null ? stripped
+                : stripped.replace("@startuml", "@startuml\n!pragma layout " + layout);
     }
 
     public String generateDiagram(String aiResponse, String baseName) throws Exception {
@@ -55,19 +83,11 @@ public class DiagramGenerationService {
             System.out.println("✓ Extracted PlantUML, length: " + plantUmlCode.length());
         }
         
-        if (!plantUmlCode.contains("!pragma layout")) {
-            plantUmlCode = plantUmlCode.replace("@startuml", "@startuml\n!pragma layout smetana");
-        }
-        
         System.out.println("Generating PNG from PlantUML...");
         System.out.println("PlantUML code preview: " + plantUmlCode.substring(0, Math.min(200, plantUmlCode.length())));
-        
-        ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
-        SourceStringReader reader = new SourceStringReader(plantUmlCode);
-        
-        FileFormatOption option = new FileFormatOption(FileFormat.PNG);
-        reader.outputImage(pngStream, option);
-        
+
+        ByteArrayOutputStream pngStream = renderWithFallback(plantUmlCode);
+
         System.out.println("✓ PlantUML rendered, PNG size: " + pngStream.size() + " bytes");
 
         Path diagramDir = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(DIAGRAMS_DIR);
@@ -150,20 +170,9 @@ public class DiagramGenerationService {
 
     public byte[] generatePreview(String analysisText) throws Exception {
         String plantUmlCode = extractPlantUML(analysisText);
-        
         if (plantUmlCode == null || plantUmlCode.isEmpty()) {
             plantUmlCode = generateDefaultPlantUML(analysisText);
         }
-        
-        if (!plantUmlCode.contains("!pragma layout")) {
-            plantUmlCode = plantUmlCode.replace("@startuml", "@startuml\n!pragma layout smetana");
-        }
-        
-        ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
-        SourceStringReader reader = new SourceStringReader(plantUmlCode);
-        FileFormatOption option = new FileFormatOption(FileFormat.PNG);
-        reader.outputImage(pngStream, option);
-        
-        return pngStream.toByteArray();
+        return renderWithFallback(plantUmlCode).toByteArray();
     }
 }

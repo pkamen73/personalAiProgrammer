@@ -54,16 +54,21 @@ public class ProjectAnalysisPipelineService {
     public ProjectAnalysisResult run(String ollamaModel, String projectPath) {
         List<String> errors = new ArrayList<>();
 
-        progress("SCANNING", "Scanning and parsing project files…", 0, 0);
+        String scanRoot = workspaceHolder.getRootPath();
+        System.out.println("[Pipeline] Starting analysis. WorkspaceHolder path: " + scanRoot);
+        progress("SCANNING", "Scanning " + scanRoot + "…", 0, 0);
         List<JavaFileInfo> files = stage123_scanParseModel(errors, projectPath);
         progress("SCANNING", "Found " + files.size() + " files", files.size(), 0);
 
         if (files.isEmpty()) {
-            progress("ERROR", "No Java files found in project", 0, 0);
+            String msg = "No Java files found in: " + scanRoot;
+            progress("ERROR", msg, 0, 0);
+            errors.add(msg);
             return ProjectAnalysisResult.builder()
                     .status("NO_FILES")
                     .totalFiles(0)
                     .summarizedFiles(0)
+                    .docsPath(scanRoot)
                     .errors(errors)
                     .completedAt(Instant.now())
                     .build();
@@ -290,8 +295,8 @@ public class ProjectAnalysisPipelineService {
         sb.append("skinparam class {\n  BackgroundColor #e8f5e9\n  BorderColor #388e3c\n  ArrowColor #1b5e20\n}\n");
         sb.append("title Class Hierarchy Diagram\n\n");
 
-        boolean largeSet = files.size() > 60;
-        if (largeSet) sb.append("hide members\n\n");
+        boolean showMembers = files.size() <= 20;
+        sb.append("hide members\n\n");
 
         java.util.Map<String, java.util.List<JavaFileInfo>> byPackage = new java.util.LinkedHashMap<>();
         for (JavaFileInfo f : files) {
@@ -310,7 +315,7 @@ public class ProjectAnalysisPipelineService {
                 } else {
                     sb.append("  class ").append(f.getClassName());
                 }
-                if (!largeSet && (!f.getMethods().isEmpty() || !f.getFields().isEmpty())) {
+                if (showMembers && (!f.getMethods().isEmpty() || !f.getFields().isEmpty())) {
                     sb.append(" {\n");
                     f.getFields().stream().limit(4)
                             .forEach(field -> sb.append("    ").append(escapePuml(field)).append("\n"));

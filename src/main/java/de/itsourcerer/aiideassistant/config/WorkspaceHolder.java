@@ -25,6 +25,7 @@ public class WorkspaceHolder {
 
     public void setRootPath(String path) {
         this.rootPath = Paths.get(path).toAbsolutePath().normalize().toString();
+        System.out.println("[WorkspaceHolder] Root path changed to: " + this.rootPath);
     }
 
     public Path resolve(String relativePath) {

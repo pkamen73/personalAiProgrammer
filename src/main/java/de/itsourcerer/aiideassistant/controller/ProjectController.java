@@ -53,6 +53,30 @@ public class ProjectController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/file")
+    public ResponseEntity<Void> createFile(@RequestParam String path) {
+        projectService.createFile(path);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/rename")
+    public ResponseEntity<Void> rename(@RequestParam String path, @RequestParam String newName) {
+        projectService.rename(path, newName);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/move")
+    public ResponseEntity<Void> move(@RequestParam String source, @RequestParam String dest) {
+        projectService.move(source, dest);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/copy")
+    public ResponseEntity<Void> copy(@RequestParam String source, @RequestParam String dest) {
+        projectService.copy(source, dest);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping
     public ResponseEntity<Void> delete(@RequestParam String path) {
         projectService.delete(path);
@@ -72,9 +96,8 @@ public class ProjectController {
 
     @PostMapping("/analyze-full")
     public ResponseEntity<Map<String, String>> analyzeFullAsync(
-            @RequestParam(required = false) String ollamaModel,
-            @RequestParam(required = false) String projectPath) {
-        pipelineService.runAsync(ollamaModel, projectPath);
+            @RequestParam(required = false) String ollamaModel) {
+        pipelineService.runAsync(ollamaModel, null);
         return ResponseEntity.accepted().body(Map.of(
                 "status", "RUNNING",
                 "message", "Analysis pipeline started. Docs will be written to .ai-ide/docs/"
@@ -83,9 +106,8 @@ public class ProjectController {
 
     @PostMapping("/analyze-full/sync")
     public ResponseEntity<ProjectAnalysisResult> analyzeFullSync(
-            @RequestParam(required = false) String ollamaModel,
-            @RequestParam(required = false) String projectPath) {
-        ProjectAnalysisResult result = pipelineService.run(ollamaModel, projectPath);
+            @RequestParam(required = false) String ollamaModel) {
+        ProjectAnalysisResult result = pipelineService.run(ollamaModel, null);
         return ResponseEntity.ok(result);
     }
 }
