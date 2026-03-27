@@ -1,8 +1,8 @@
 package de.itsourcerer.aiideassistant.service;
 
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
 import de.itsourcerer.aiideassistant.model.ProjectNode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -18,11 +18,14 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class ProjectService {
 
-    @Value("${workspace.root-path:./workspace}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
+
+    public String getWorkspaceRoot() {
+        return workspaceHolder.getAbsolutePath();
+    }
 
     public ProjectNode getProjectTree(String relativePath) {
-        Path rootPath = Paths.get(workspaceRoot).toAbsolutePath().normalize();
+        Path rootPath = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().normalize();
         
         if (!Files.exists(rootPath)) {
             try {
@@ -60,9 +63,7 @@ public class ProjectService {
             if (children != null) {
                 List<ProjectNode> childNodes = new ArrayList<>();
                 for (File child : children) {
-                    if (!child.getName().startsWith(".") && !child.isHidden()) {
-                        childNodes.add(buildTree(child, workspaceRoot));
-                    }
+                    childNodes.add(buildTree(child, workspaceRoot));
                 }
                 childNodes.sort((a, b) -> {
                     if (a.getType() == b.getType()) {
@@ -79,7 +80,7 @@ public class ProjectService {
 
     public void createDirectory(String relativePath) {
         try {
-            Path targetPath = Paths.get(workspaceRoot).resolve(relativePath);
+            Path targetPath = Paths.get(workspaceHolder.getRootPath()).resolve(relativePath);
             Files.createDirectories(targetPath);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create directory: " + relativePath, e);
@@ -88,7 +89,7 @@ public class ProjectService {
 
     public void delete(String relativePath) {
         try {
-            Path targetPath = Paths.get(workspaceRoot).resolve(relativePath);
+            Path targetPath = Paths.get(workspaceHolder.getRootPath()).resolve(relativePath);
             if (Files.isDirectory(targetPath)) {
                 try (Stream<Path> walk = Files.walk(targetPath)) {
                     walk.sorted((a, b) -> b.compareTo(a))

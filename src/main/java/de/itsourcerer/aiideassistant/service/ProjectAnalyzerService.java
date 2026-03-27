@@ -1,7 +1,14 @@
 package de.itsourcerer.aiideassistant.service;
 
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
 import de.itsourcerer.aiideassistant.model.JavaFileInfo;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,24 +17,26 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@RequiredArgsConstructor
 public class ProjectAnalyzerService {
 
-    @Value("${workspace.root-path:.}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
 
-    private static final Pattern PACKAGE_PATTERN = Pattern.compile("package\\s+([\\w.]+);");
-    private static final Pattern CLASS_PATTERN = Pattern.compile("(?:public\\s+)?(?:abstract\\s+)?(?:final\\s+)?(class|interface|enum)\\s+(\\w+)");
-    private static final Pattern IMPORT_PATTERN = Pattern.compile("import\\s+([\\w.]+);");
-    private static final Pattern METHOD_PATTERN = Pattern.compile("(?:public|protected|private)?\\s+(?:static\\s+)?(?:\\w+(?:<[^>]+>)?\\s+)(\\w+)\\s*\\([^)]*\\)");
+    private final JavaParser javaParser = new JavaParser();
 
     public List<JavaFileInfo> analyzeProject() {
+        return analyzeProject(null);
+    }
+
+    public List<JavaFileInfo> analyzeProject(String overridePath) {
         List<JavaFileInfo> files = new ArrayList<>();
-        Path rootPath = Paths.get(workspaceRoot).toAbsolutePath();
+        String root = (overridePath != null && !overridePath.isBlank()) ? overridePath : workspaceHolder.getRootPath();
+        Path rootPath = Paths.get(root).toAbsolutePath();
+        System.out.println("[ProjectAnalyzer] Scanning: " + rootPath);
 
         try (Stream<Path> paths = Files.walk(rootPath)) {
             paths.filter(p -> p.toString().endsWith(".java"))
@@ -51,62 +60,86 @@ public class ProjectAnalyzerService {
     }
 
     private JavaFileInfo analyzeJavaFile(Path filePath, Path rootPath) throws IOException {
-        String content = Files.readString(filePath);
         String relativePath = rootPath.relativize(filePath).toString();
+        ParseResult<CompilationUnit> parseResult = javaParser.parse(filePath);
 
-        String packageName = extractPackage(content);
-        String className = extractClassName(content);
-        List<String> imports = extractImports(content);
-        List<String> methods = extractMethods(content);
-        List<String> fields = extractFields(content);
+        if (!parseResult.isSuccessful() || parseResult.getResult().isEmpty()) {
+            System.err.println("Parse errors in " + relativePath + ": " + parseResult.getProblems());
+            return JavaFileInfo.builder()
+                    .path(relativePath)
+                    .packageName("")
+                    .className(filePath.getFileName().toString().replace(".java", ""))
+                    .imports(List.of())
+                    .methods(List.of())
+                    .fields(List.of())
+                    .annotations(List.of())
+                    .interfaces(List.of())
+                    .build();
+        }
+
+        CompilationUnit cu = parseResult.getResult().get();
+
+        String packageName = cu.getPackageDeclaration()
+                .map(pd -> pd.getNameAsString())
+                .orElse("");
+
+        List<String> imports = cu.getImports().stream()
+                .map(id -> id.getNameAsString())
+                .collect(Collectors.toList());
+
+        List<String> methods = new ArrayList<>();
+        List<String> fields = new ArrayList<>();
+        List<String> annotations = new ArrayList<>();
+        List<String> interfaces = new ArrayList<>();
+        String className = "";
+        boolean isInterface = false;
+        boolean isAbstract = false;
+
+        List<ClassOrInterfaceDeclaration> types = cu.findAll(ClassOrInterfaceDeclaration.class);
+        String superClass = "";
+        if (!types.isEmpty()) {
+            ClassOrInterfaceDeclaration primary = types.get(0);
+            className = primary.getNameAsString();
+            isInterface = primary.isInterface();
+            isAbstract = primary.isAbstract();
+
+            primary.getAnnotations().forEach(a -> annotations.add(a.getNameAsString()));
+
+            superClass = primary.getExtendedTypes().stream()
+                    .findFirst()
+                    .map(t -> t.getNameAsString())
+                    .orElse("");
+
+            primary.getImplementedTypes()
+                    .forEach(t -> interfaces.add(t.getNameAsString()));
+
+            for (MethodDeclaration md : primary.getMethods()) {
+                String params = md.getParameters().stream()
+                        .map(p -> p.getType().asString() + " " + p.getNameAsString())
+                        .collect(Collectors.joining(", "));
+                methods.add(md.getType().asString() + " " + md.getNameAsString() + "(" + params + ")");
+            }
+
+            for (FieldDeclaration fd : primary.getFields()) {
+                fd.getVariables().forEach(v -> fields.add(fd.getElementType().asString() + " " + v.getNameAsString()));
+            }
+        }
+
+        final String finalClassName = className;
+        final String finalSuperClass = superClass;
 
         return JavaFileInfo.builder()
                 .path(relativePath)
                 .packageName(packageName)
-                .className(className)
+                .className(finalClassName)
                 .imports(imports)
                 .methods(methods)
                 .fields(fields)
-                .isInterface(content.contains("interface " + className))
-                .isAbstract(content.contains("abstract class " + className))
+                .annotations(annotations)
+                .superClass(finalSuperClass)
+                .interfaces(interfaces)
+                .isInterface(isInterface)
+                .isAbstract(isAbstract)
                 .build();
-    }
-
-    private String extractPackage(String content) {
-        Matcher matcher = PACKAGE_PATTERN.matcher(content);
-        return matcher.find() ? matcher.group(1) : "";
-    }
-
-    private String extractClassName(String content) {
-        Matcher matcher = CLASS_PATTERN.matcher(content);
-        return matcher.find() ? matcher.group(2) : "";
-    }
-
-    private List<String> extractImports(String content) {
-        List<String> imports = new ArrayList<>();
-        Matcher matcher = IMPORT_PATTERN.matcher(content);
-        while (matcher.find()) {
-            imports.add(matcher.group(1));
-        }
-        return imports;
-    }
-
-    private List<String> extractMethods(String content) {
-        List<String> methods = new ArrayList<>();
-        Matcher matcher = METHOD_PATTERN.matcher(content);
-        while (matcher.find()) {
-            methods.add(matcher.group(1));
-        }
-        return methods;
-    }
-
-    private List<String> extractFields(String content) {
-        List<String> fields = new ArrayList<>();
-        Pattern fieldPattern = Pattern.compile("private\\s+(?:static\\s+)?(?:final\\s+)?\\w+(?:<[^>]+>)?\\s+(\\w+);");
-        Matcher matcher = fieldPattern.matcher(content);
-        while (matcher.find()) {
-            fields.add(matcher.group(1));
-        }
-        return fields;
     }
 }

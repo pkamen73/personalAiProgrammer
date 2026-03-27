@@ -19,8 +19,8 @@ import java.util.stream.Stream;
 @Service
 public class DiagramGenerationService {
 
-    @Value("${workspace.root-path:.}")
-    private String workspaceRoot;
+    @org.springframework.beans.factory.annotation.Autowired
+    private de.itsourcerer.aiideassistant.config.WorkspaceHolder workspaceHolder;
 
     private static final String DIAGRAMS_DIR = ".ai-ide/diagrams";
     private static final Pattern PLANTUML_PATTERN = Pattern.compile("```(?:plantuml)?\\s*\\n?(@startuml[\\s\\S]*?@enduml)\\s*\\n?```", Pattern.CASE_INSENSITIVE);
@@ -32,6 +32,16 @@ public class DiagramGenerationService {
         System.setProperty("plantuml.include.path", ".");
         System.setProperty("GRAPHVIZ_DOT", "");
         System.out.println("PlantUML configured with Smetana (built-in Java renderer)");
+    }
+
+    public void renderToPng(String plantUmlSource, Path outputPath) throws Exception {
+        String source = plantUmlSource.contains("!pragma layout")
+                ? plantUmlSource
+                : plantUmlSource.replace("@startuml", "@startuml\n!pragma layout smetana");
+        ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
+        new SourceStringReader(source).outputImage(pngStream, new FileFormatOption(FileFormat.PNG));
+        Files.createDirectories(outputPath.getParent());
+        Files.write(outputPath, pngStream.toByteArray());
     }
 
     public String generateDiagram(String aiResponse, String baseName) throws Exception {
@@ -60,7 +70,7 @@ public class DiagramGenerationService {
         
         System.out.println("✓ PlantUML rendered, PNG size: " + pngStream.size() + " bytes");
 
-        Path diagramDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(DIAGRAMS_DIR);
+        Path diagramDir = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(DIAGRAMS_DIR);
         System.out.println("Creating diagram directory: " + diagramDir);
         Files.createDirectories(diagramDir);
 
@@ -131,7 +141,7 @@ public class DiagramGenerationService {
     }
 
     public byte[] getDiagram(String diagramId) throws Exception {
-        Path diagramPath = Paths.get(workspaceRoot, DIAGRAMS_DIR, diagramId);
+        Path diagramPath = Paths.get(workspaceHolder.getRootPath(), DIAGRAMS_DIR, diagramId);
         if (!Files.exists(diagramPath)) {
             throw new Exception("Diagram not found: " + diagramId);
         }

@@ -15,9 +15,10 @@ public class ChatController {
     @MessageMapping("/chat")
     public void handleChatMessage(ChatRequest request) {
         chatService.processMessageStreaming(
-            request.getMessage(), 
+            request.getMessage(),
             request.getModelConfigId(),
-            request.getOllamaModel()
+            request.getOllamaModel(),
+            request.getHistory()
         );
     }
 }

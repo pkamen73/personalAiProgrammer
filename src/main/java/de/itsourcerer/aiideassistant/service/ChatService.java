@@ -3,6 +3,7 @@ package de.itsourcerer.aiideassistant.service;
 import de.itsourcerer.aiideassistant.entity.ModelConfiguration;
 import de.itsourcerer.aiideassistant.model.ChatMessage;
 import de.itsourcerer.aiideassistant.model.FileContext;
+import de.itsourcerer.aiideassistant.model.HistoryMessage;
 import de.itsourcerer.aiideassistant.model.JavaFileInfo;
 import de.itsourcerer.aiideassistant.model.ModelConfig;
 import de.itsourcerer.aiideassistant.service.provider.ModelProvider;
@@ -26,12 +27,12 @@ public class ChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ProjectAnalyzerService projectAnalyzerService;
 
-    public void processMessageStreaming(ChatMessage userMessage, Long modelConfigId, String ollamaModel) {
+    public void processMessageStreaming(ChatMessage userMessage, Long modelConfigId, String ollamaModel, List<HistoryMessage> history) {
         String messageId = UUID.randomUUID().toString();
         String promptWithContext = buildPromptWithFileContext(userMessage);
         
         if (ollamaModel != null && !ollamaModel.isEmpty()) {
-            handleOllamaStreaming(messageId, promptWithContext, ollamaModel, userMessage.getConversationId());
+            handleOllamaStreaming(messageId, promptWithContext, ollamaModel, userMessage.getConversationId(), history);
             return;
         }
         
@@ -60,7 +61,7 @@ public class ChatService {
         
         if ("openrouter".equals(provider)) {
             OpenRouterProvider openRouterProvider = (OpenRouterProvider) modelProvider;
-            openRouterProvider.streamResponse(promptWithContext, config)
+            openRouterProvider.streamResponse(promptWithContext, config, history)
                 .subscribe(
                     token -> sendToken(messageId, token, userMessage.getConversationId()),
                     error -> sendErrorMessage(userMessage, error.getMessage())
@@ -71,9 +72,9 @@ public class ChatService {
         }
     }
     
-    private void handleOllamaStreaming(String messageId, String prompt, String modelName, String conversationId) {
+    private void handleOllamaStreaming(String messageId, String prompt, String modelName, String conversationId, List<HistoryMessage> history) {
         OllamaProvider ollamaProvider = (OllamaProvider) modelProviderService.getProvider("ollama");
-        ollamaProvider.streamResponse(prompt, modelName)
+        ollamaProvider.streamResponse(prompt, modelName, history)
             .subscribe(
                 token -> sendToken(messageId, token, conversationId),
                 error -> {

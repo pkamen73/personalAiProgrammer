@@ -1,14 +1,28 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { getProjectTree } from '../services/projectApi'
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
+import { getProjectTree, openProject, getWorkspaceRoot } from '../services/projectApi'
 import './FileTree.css'
 
 const FileTree = forwardRef(({ onFileSelect, modifiedFiles = new Set() }, ref) => {
   const [tree, setTree] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
+  const [currentPath, setCurrentPath] = useState('')
+  const [showPathInput, setShowPathInput] = useState(false)
+  const [pathInput, setPathInput] = useState('')
+  const [opening, setOpening] = useState(false)
+  const [openError, setOpenError] = useState(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     loadTree()
+    getWorkspaceRoot().then(setCurrentPath).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (showPathInput && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [showPathInput])
 
   const loadTree = async () => {
     try {
@@ -16,6 +30,24 @@ const FileTree = forwardRef(({ onFileSelect, modifiedFiles = new Set() }, ref) =
       setTree(data)
     } catch (error) {
       console.error('Failed to load project tree:', error)
+    }
+  }
+
+  const handleOpenProject = async () => {
+    const path = pathInput.trim()
+    if (!path) return
+    setOpening(true)
+    setOpenError(null)
+    try {
+      const result = await openProject(path)
+      setCurrentPath(result.path)
+      setShowPathInput(false)
+      setPathInput('')
+      await loadTree()
+    } catch (err) {
+      setOpenError(err.response?.data?.error || err.message)
+    } finally {
+      setOpening(false)
     }
   }
 
@@ -79,9 +111,45 @@ const FileTree = forwardRef(({ onFileSelect, modifiedFiles = new Set() }, ref) =
     )
   }
 
+  const dirName = currentPath ? currentPath.split('/').filter(Boolean).pop() || currentPath : 'PROJECT'
+
   return (
     <div className="file-tree">
-      <div className="file-tree-header">PROJECT</div>
+      <div className="file-tree-header">
+        <span className="file-tree-title" title={currentPath}>{dirName}</span>
+        <button
+          className="file-tree-open-btn"
+          onClick={() => { setShowPathInput(v => !v); setOpenError(null); setPathInput(currentPath) }}
+          title="Open folder…"
+        >
+          📂
+        </button>
+      </div>
+      {showPathInput && (
+        <div className="file-tree-path-input-row">
+          <input
+            ref={inputRef}
+            className="file-tree-path-input"
+            type="text"
+            placeholder="/path/to/project"
+            value={pathInput}
+            onChange={e => setPathInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleOpenProject()
+              if (e.key === 'Escape') { setShowPathInput(false); setOpenError(null) }
+            }}
+            disabled={opening}
+          />
+          <button
+            className="file-tree-open-confirm"
+            onClick={handleOpenProject}
+            disabled={opening || !pathInput.trim()}
+          >
+            {opening ? '…' : '→'}
+          </button>
+          {openError && <div className="file-tree-open-error">{openError}</div>}
+        </div>
+      )}
       <div className="file-tree-content">
         {tree ? renderNode(tree) : <div className="loading">Loading...</div>}
       </div>

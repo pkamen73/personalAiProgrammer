@@ -3,6 +3,36 @@ import { uploadImage, analyzeMindmap, generateDiagram, getAnalyses, loadAnalysis
 import { getAllPrompts } from '../services/analysisPromptApi'
 import './MindmapModal.css'
 
+const PlantUmlEditor = ({ value, onChange }) => {
+  const taRef = useRef(null)
+  const gutterRef = useRef(null)
+  const lineCount = Math.max(1, value.split('\n').length)
+
+  const syncScroll = () => {
+    if (gutterRef.current && taRef.current) {
+      gutterRef.current.scrollTop = taRef.current.scrollTop
+    }
+  }
+
+  return (
+    <div className="plantuml-editor">
+      <div ref={gutterRef} className="ln-gutter" aria-hidden="true">
+        {Array.from({ length: lineCount }, (_, i) => (
+          <div key={i} className="ln-number">{i + 1}</div>
+        ))}
+      </div>
+      <textarea
+        ref={taRef}
+        className="analysis-editor"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={syncScroll}
+        spellCheck={false}
+      />
+    </div>
+  )
+}
+
 const FilenameInput = ({ onConfirm, onCancel }) => {
   const [value, setValue] = useState('')
   const inputRef = useRef(null)
@@ -430,11 +460,9 @@ const MindmapModal = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                   )}
-                  <textarea
-                    className="analysis-editor"
+                  <PlantUmlEditor
                     value={editedAnalysis}
-                    onChange={(e) => setEditedAnalysis(e.target.value)}
-                    rows={20}
+                    onChange={setEditedAnalysis}
                   />
                 </div>
                 <div className="review-preview">

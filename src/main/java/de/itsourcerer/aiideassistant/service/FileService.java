@@ -1,9 +1,9 @@
 package de.itsourcerer.aiideassistant.service;
 
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
 import de.itsourcerer.aiideassistant.model.FileContent;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FileUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -16,13 +16,12 @@ import java.nio.file.Paths;
 @RequiredArgsConstructor
 public class FileService {
 
-    @Value("${workspace.root-path:./workspace}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
 
     public FileContent readFile(String relativePath) {
         try {
             String cleanPath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-            Path targetPath = Paths.get(workspaceRoot).resolve(cleanPath);
+            Path targetPath = Paths.get(workspaceHolder.getRootPath()).resolve(cleanPath);
             String content = FileUtils.readFileToString(targetPath.toFile(), StandardCharsets.UTF_8);
             
             return FileContent.builder()
@@ -39,7 +38,7 @@ public class FileService {
     public void writeFile(FileContent fileContent) {
         try {
             String cleanPath = fileContent.getPath().startsWith("/") ? fileContent.getPath().substring(1) : fileContent.getPath();
-            Path targetPath = Paths.get(workspaceRoot).resolve(cleanPath);
+            Path targetPath = Paths.get(workspaceHolder.getRootPath()).resolve(cleanPath);
             Files.createDirectories(targetPath.getParent());
             FileUtils.writeStringToFile(targetPath.toFile(), fileContent.getContent(), StandardCharsets.UTF_8);
         } catch (Exception e) {
@@ -50,7 +49,7 @@ public class FileService {
     public void deleteFile(String relativePath) {
         try {
             String cleanPath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-            Path targetPath = Paths.get(workspaceRoot).resolve(cleanPath);
+            Path targetPath = Paths.get(workspaceHolder.getRootPath()).resolve(cleanPath);
             Files.delete(targetPath);
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete file: " + relativePath, e);

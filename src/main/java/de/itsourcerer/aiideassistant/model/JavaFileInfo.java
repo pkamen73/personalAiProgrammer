@@ -20,4 +20,8 @@ public class JavaFileInfo {
     private List<String> fields;
     private boolean isInterface;
     private boolean isAbstract;
+    private List<String> annotations;
+    private String superClass;
+    private List<String> interfaces;
+    private String summary;
 }

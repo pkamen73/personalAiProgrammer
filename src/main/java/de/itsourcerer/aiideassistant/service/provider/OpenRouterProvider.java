@@ -1,9 +1,12 @@
 package de.itsourcerer.aiideassistant.service.provider;
 
+import de.itsourcerer.aiideassistant.model.HistoryMessage;
 import de.itsourcerer.aiideassistant.model.ModelConfig;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -19,18 +22,22 @@ public class OpenRouterProvider implements ModelProvider {
     @Override
     public String generateResponse(String prompt, ModelConfig config) {
         StringBuilder response = new StringBuilder();
-        
-        streamResponse(prompt, config)
-            .doOnNext(token -> response.append(token))
+        streamResponse(prompt, config, Collections.emptyList())
+            .doOnNext(response::append)
             .blockLast();
-        
         return response.toString();
     }
-    
-    public Flux<String> streamResponse(String prompt, ModelConfig config) {
+
+    public Flux<String> streamResponse(String prompt, ModelConfig config, List<HistoryMessage> history) {
+        List<Map<String, String>> messages = new ArrayList<>();
+        for (HistoryMessage h : history) {
+            messages.add(Map.of("role", h.getRole(), "content", h.getContent()));
+        }
+        messages.add(Map.of("role", "user", "content", prompt));
+
         Map<String, Object> requestBody = Map.of(
             "model", config.getModelName(),
-            "messages", List.of(Map.of("role", "user", "content", prompt)),
+            "messages", messages,
             "stream", true
         );
         

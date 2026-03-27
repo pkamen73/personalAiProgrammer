@@ -3,6 +3,8 @@ import { Client } from '@stomp/stompjs'
 
 let stompClient = null
 
+let progressCallback = null
+
 export const connectChat = (onMessageReceived) => {
   const socket = new SockJS('/ws')
   
@@ -16,6 +18,9 @@ export const connectChat = (onMessageReceived) => {
         const chatMessage = JSON.parse(message.body)
         onMessageReceived(chatMessage)
       })
+      stompClient.subscribe('/topic/progress', (message) => {
+        if (progressCallback) progressCallback(JSON.parse(message.body))
+      })
     },
     onStompError: (frame) => {
       console.error('STOMP error:', frame)
@@ -25,6 +30,8 @@ export const connectChat = (onMessageReceived) => {
   stompClient.activate()
   return stompClient
 }
+
+export const setProgressCallback = (cb) => { progressCallback = cb }
 
 export const sendMessage = async (message) => {
   if (stompClient && stompClient.connected) {

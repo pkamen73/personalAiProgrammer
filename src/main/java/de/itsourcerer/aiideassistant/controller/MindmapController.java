@@ -1,9 +1,9 @@
 package de.itsourcerer.aiideassistant.controller;
 
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
 import de.itsourcerer.aiideassistant.service.DiagramGenerationService;
 import de.itsourcerer.aiideassistant.service.MindmapAnalysisService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +21,7 @@ public class MindmapController {
 
     private final MindmapAnalysisService mindmapAnalysisService;
     private final DiagramGenerationService diagramGenerationService;
-    
-    @Value("${workspace.root-path:.}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
 
     @PostMapping("/analyze")
     public ResponseEntity<Map<String, String>> analyzeMindmap(@RequestBody Map<String, String> request) {
@@ -80,7 +78,7 @@ public class MindmapController {
     @GetMapping("/analyses")
     public ResponseEntity<List<Map<String, String>>> listAnalyses() {
         try {
-            Path diagramDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(".ai-ide/diagrams");
+            Path diagramDir = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(".ai-ide/diagrams");
             
             if (!Files.exists(diagramDir)) {
                 return ResponseEntity.ok(List.of());
@@ -118,7 +116,7 @@ public class MindmapController {
     @GetMapping("/analysis/{filename}")
     public ResponseEntity<Map<String, String>> getAnalysis(@PathVariable String filename) {
         try {
-            Path analysisPath = Paths.get(workspaceRoot).toAbsolutePath()
+            Path analysisPath = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath()
                 .resolve(".ai-ide/diagrams")
                 .resolve(filename);
             
@@ -146,7 +144,7 @@ public class MindmapController {
             if (!filename.endsWith(".txt")) {
                 return ResponseEntity.badRequest().build();
             }
-            Path diagramDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(".ai-ide/diagrams");
+            Path diagramDir = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(".ai-ide/diagrams");
             Path txtFile = diagramDir.resolve(filename);
             Path pngFile = diagramDir.resolve(filename.replace(".txt", ".png"));
 

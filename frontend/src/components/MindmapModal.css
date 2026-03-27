@@ -276,24 +276,57 @@
   font-weight: 600;
 }
 
-.analysis-editor {
-  width: 100%;
+.plantuml-editor {
+  display: grid;
+  grid-template-columns: 2.6em 1fr;
   flex: 1;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  min-height: 0;
   border: 1px solid var(--border-color);
-  padding: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-primary);
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
-  border-radius: 4px;
+}
+
+.plantuml-editor:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.ln-gutter {
+  overflow: hidden;
+  padding: 12px 6px 12px 0;
+  text-align: right;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.ln-number {
+  line-height: 1.6;
+  font-size: 13px;
+  opacity: 0.5;
+}
+
+.analysis-editor {
+  width: 100%;
+  flex: 1;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: 12px 12px 12px 8px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
   resize: none;
   min-height: 0;
+  outline: none;
 }
 
 .analysis-editor:focus {
   outline: none;
-  border-color: var(--accent-primary);
 }
 
 .preview-container {

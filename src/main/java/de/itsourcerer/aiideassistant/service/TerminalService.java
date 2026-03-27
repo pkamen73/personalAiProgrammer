@@ -1,7 +1,7 @@
 package de.itsourcerer.aiideassistant.service;
 
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
 import de.itsourcerer.aiideassistant.model.TerminalSession;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -17,12 +17,11 @@ public class TerminalService {
 
     private final Map<String, TerminalSession> sessions = new ConcurrentHashMap<>();
     private final SimpMessagingTemplate messagingTemplate;
-    
-    @Value("${workspace.root-path:.}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
 
-    public TerminalService(SimpMessagingTemplate messagingTemplate) {
+    public TerminalService(SimpMessagingTemplate messagingTemplate, WorkspaceHolder workspaceHolder) {
         this.messagingTemplate = messagingTemplate;
+        this.workspaceHolder = workspaceHolder;
     }
 
     public String createSession() {
@@ -33,7 +32,7 @@ public class TerminalService {
         TerminalSession session = new TerminalSession(sessionId);
         sessions.put(sessionId, session);
         
-        String prompt = workspaceRoot + " $ ";
+        String prompt = workspaceHolder.getRootPath() + " $ ";
         messagingTemplate.convertAndSend("/topic/terminal/" + sessionId, prompt);
         System.out.println("✓ Sent initial prompt");
         
@@ -57,7 +56,7 @@ public class TerminalService {
                 System.out.println("Executing: [" + command + "]");
                 executeCommand(sessionId, command);
             } else {
-                messagingTemplate.convertAndSend("/topic/terminal/" + sessionId, "\r\n" + workspaceRoot + " $ ");
+                messagingTemplate.convertAndSend("/topic/terminal/" + sessionId, "\r\n" + workspaceHolder.getRootPath() + " $ ");
             }
         } else if (input.equals("\u007f") || input.equals("\b")) {
             if (session.getCommandBuffer().length() > 0) {
@@ -73,7 +72,7 @@ public class TerminalService {
     private void executeCommand(String sessionId, String command) {
         try {
             ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", command);
-            pb.directory(new File(workspaceRoot));
+            pb.directory(new File(workspaceHolder.getRootPath()));
             pb.redirectErrorStream(true);
             
             Process process = pb.start();
@@ -93,7 +92,7 @@ public class TerminalService {
             if (!output.toString().endsWith("\r\n")) {
                 output.append("\r\n");
             }
-            output.append(workspaceRoot).append(" $ ");
+            output.append(workspaceHolder.getRootPath()).append(" $ ");
             
             messagingTemplate.convertAndSend("/topic/terminal/" + sessionId, output.toString());
             System.out.println("✓ Command completed");
@@ -101,7 +100,7 @@ public class TerminalService {
         } catch (Exception e) {
             System.err.println("Command execution error: " + e.getMessage());
             messagingTemplate.convertAndSend("/topic/terminal/" + sessionId, 
-                "\r\nError: " + e.getMessage() + "\r\n" + workspaceRoot + " $ ");
+                "\r\nError: " + e.getMessage() + "\r\n" + workspaceHolder.getRootPath() + " $ ");
         }
     }
 

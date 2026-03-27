@@ -7,13 +7,96 @@
 }
 
 .file-tree-header {
-  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  padding: 5px 8px 5px 12px;
   background: var(--bg-tertiary);
   font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
   transition: all var(--transition-speed);
+  gap: 4px;
+}
+
+.file-tree-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.file-tree-open-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.file-tree-open-btn:hover {
+  opacity: 1;
+  background: var(--bg-elevated);
+}
+
+.file-tree-path-input-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-tree-path-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 7px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Menlo', 'Monaco', monospace;
+}
+
+.file-tree-path-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.file-tree-open-confirm {
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.file-tree-open-confirm:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.file-tree-open-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-tree-open-error {
+  width: 100%;
+  font-size: 11px;
+  color: #f47067;
+  padding: 2px 2px 0;
 }
 
 .file-tree-content {

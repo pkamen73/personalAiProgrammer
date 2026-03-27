@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
-import { getFile, saveFile } from '../services/fileApi'
+import { getFile, saveFile, isImagePath, getImageUrl } from '../services/fileApi'
+import PumlEditor from './PumlEditor'
 import './EditorPanel.css'
+
+const isPumlPath = (path) => path && path.toLowerCase().endsWith('.puml')
 
 const EditorPanel = ({ openFiles, activeFile, onFileSelect, onFileClose, modifiedFiles, setModifiedFiles, theme = 'dark' }) => {
   const [fileContents, setFileContents] = useState({})
 
   useEffect(() => {
-    if (activeFile && !fileContents[activeFile]) {
+    if (activeFile && !isImagePath(activeFile) && !fileContents[activeFile]) {
       loadFile(activeFile)
     }
   }, [activeFile])
+
+  const handlePumlChange = (value) => {
+    if (activeFile) {
+      setFileContents(prev => ({ ...prev, [activeFile]: { ...prev[activeFile], content: value } }))
+      setModifiedFiles(prev => new Set(prev).add(activeFile))
+    }
+  }
+
+  const handlePumlSaved = () => {
+    setModifiedFiles(prev => { const s = new Set(prev); s.delete(activeFile); return s })
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -88,7 +102,26 @@ const EditorPanel = ({ openFiles, activeFile, onFileSelect, onFileClose, modifie
         ))}
       </div>
       <div className="editor-container">
-        {activeContent ? (
+        {!activeFile ? (
+          <div className="editor-empty">No file selected</div>
+        ) : isImagePath(activeFile) ? (
+          <div className="image-viewer">
+            <img
+              src={getImageUrl(activeFile)}
+              alt={activeFile.split('/').pop()}
+              className="image-viewer-img"
+            />
+            <div className="image-viewer-name">{activeFile.split('/').pop()}</div>
+          </div>
+        ) : isPumlPath(activeFile) && activeContent ? (
+          <PumlEditor
+            filePath={activeFile}
+            content={activeContent.content}
+            modified={modifiedFiles.has(activeFile)}
+            onChange={handlePumlChange}
+            onSaved={handlePumlSaved}
+          />
+        ) : activeContent ? (
           <Editor
             height="100%"
             language={activeContent.language}
@@ -103,14 +136,14 @@ const EditorPanel = ({ openFiles, activeFile, onFileSelect, onFileClose, modifie
             }}
           />
         ) : (
-          <div className="editor-empty">No file selected</div>
+          <div className="editor-empty">Loading…</div>
         )}
       </div>
       <div className="editor-status">
         {activeFile && (
           <>
-            <span>{activeContent?.language || 'plaintext'}</span>
-            {modifiedFiles.has(activeFile) && (
+            <span>{isImagePath(activeFile) ? 'image' : isPumlPath(activeFile) ? 'plantuml' : (activeContent?.language || 'plaintext')}</span>
+            {!isImagePath(activeFile) && !isPumlPath(activeFile) && modifiedFiles.has(activeFile) && (
               <button className="save-button" onClick={handleSave}>
                 Save (⌘S)
               </button>

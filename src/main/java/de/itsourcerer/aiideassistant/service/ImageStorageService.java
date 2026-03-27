@@ -1,6 +1,7 @@
 package de.itsourcerer.aiideassistant.service;
 
-import org.springframework.beans.factory.annotation.Value;
+import de.itsourcerer.aiideassistant.config.WorkspaceHolder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,16 +14,16 @@ import java.util.Base64;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ImageStorageService {
 
-    @Value("${workspace.root-path:.}")
-    private String workspaceRoot;
+    private final WorkspaceHolder workspaceHolder;
 
     private static final String IMAGES_DIR = ".ai-ide/mindmaps";
 
     public String saveImage(MultipartFile file) throws IOException {
         String imageId = UUID.randomUUID().toString() + getExtension(file.getOriginalFilename());
-        Path imageDir = Paths.get(workspaceRoot).toAbsolutePath().resolve(IMAGES_DIR);
+        Path imageDir = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(IMAGES_DIR);
         
         System.out.println("Creating directory: " + imageDir);
         Files.createDirectories(imageDir);
@@ -37,7 +38,7 @@ public class ImageStorageService {
     }
 
     public byte[] getImage(String imageId) throws IOException {
-        Path imagePath = Paths.get(workspaceRoot).toAbsolutePath().resolve(IMAGES_DIR).resolve(imageId);
+        Path imagePath = Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(IMAGES_DIR).resolve(imageId);
         if (!Files.exists(imagePath)) {
             throw new IOException("Image not found: " + imageId);
         }
@@ -45,7 +46,7 @@ public class ImageStorageService {
     }
 
     public String getImagePath(String imageId) {
-        return Paths.get(workspaceRoot).toAbsolutePath().resolve(IMAGES_DIR).resolve(imageId).toString();
+        return Paths.get(workspaceHolder.getRootPath()).toAbsolutePath().resolve(IMAGES_DIR).resolve(imageId).toString();
     }
 
     public String imageToBase64(String imageId) throws IOException {

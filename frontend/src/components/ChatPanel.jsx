@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { connectChat, sendMessage } from '../services/chatApi'
+import { connectChat, sendMessage, setProgressCallback } from '../services/chatApi'
 import { getOllamaModels } from '../services/modelApi'
 import { getAllModelConfigs } from '../services/modelConfigApi'
 import { getFile } from '../services/fileApi'
+import { analyzeFull, getWorkspaceRoot } from '../services/projectApi'
 import ModelConfigManager from './ModelConfigManager'
 import MessageContent from './MessageContent'
 import MindmapModal from './MindmapModal'
@@ -18,11 +19,16 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
   const [attachedFiles, setAttachedFiles] = useState([])
   const [showConfigManager, setShowConfigManager] = useState(false)
   const [showMindmapModal, setShowMindmapModal] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState(null)
+  const [analysisProgress, setAnalysisProgress] = useState(null)
+  const [workspaceRoot, setWorkspaceRoot] = useState(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     loadOllamaModels()
     loadCloudConfigs()
+    getWorkspaceRoot().then(setWorkspaceRoot).catch(() => {})
     
     const client = connectChat((message) => {
       if (message.role === 'ASSISTANT') {
@@ -42,8 +48,22 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
       setConnected(true)
     })
 
+    setProgressCallback((p) => {
+      setAnalysisProgress(p)
+      if (p.stage === 'COMPLETE') {
+        setAnalyzing(false)
+        if (onRefreshTree) onRefreshTree()
+      }
+      if (p.stage === 'ERROR') {
+        setAnalyzing(false)
+        setAnalysisResult({ ok: false, error: p.message })
+        setAnalysisProgress(null)
+      }
+    })
+
     return () => {
       if (client) client.deactivate()
+      setProgressCallback(null)
     }
   }, [])
   
@@ -138,66 +158,142 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
 
     try {
       const isOllama = typeof selectedConfigId === 'string' && selectedConfigId.startsWith('ollama-')
-      
+
+      const history = messages
+        .filter(m => m.role === 'USER' || m.role === 'ASSISTANT')
+        .map(m => ({ role: m.role.toLowerCase(), content: m.content }))
+
       await sendMessage({
         message: userMessage,
         modelConfigId: isOllama ? null : selectedConfigId,
-        ollamaModel: isOllama ? selectedConfigId.replace('ollama-', '') : null
+        ollamaModel: isOllama ? selectedConfigId.replace('ollama-', '') : null,
+        history
       })
     } catch (error) {
       console.error('Failed to send message:', error)
     }
   }
 
+  const handleAnalyze = async () => {
+    const ollamaModel = typeof selectedConfigId === 'string' && selectedConfigId.startsWith('ollama-')
+      ? selectedConfigId.replace('ollama-', '')
+      : null
+    setAnalyzing(true)
+    setAnalysisResult(null)
+    setAnalysisProgress({ stage: 'STARTING', message: 'Starting analysis…', totalFiles: 0, doneFiles: 0 })
+    try {
+      const result = await analyzeFull(ollamaModel, workspaceRoot)
+      setAnalysisResult({ ok: true, result })
+    } catch (err) {
+      setAnalysisResult({ ok: false, error: err.message })
+      setAnalyzing(false)
+    } finally {
+      setAnalysisProgress(null)
+    }
+  }
+
+  const stageLabel = (stage) => ({
+    STARTING: '🔬 Starting',
+    SCANNING: '📂 Scanning',
+    SUMMARIZING: '📝 Summarizing',
+    SYNTHESIZING: '🧠 Synthesizing',
+    WRITING: '📄 Writing docs',
+    COMPLETE: '✅ Complete',
+    ERROR: '❌ Error',
+  }[stage] || stage)
+
+  const activeModelLabel = (() => {
+    if (!selectedConfigId) return null
+    if (typeof selectedConfigId === 'string' && selectedConfigId.startsWith('ollama-')) {
+      return selectedConfigId.replace('ollama-', '')
+    }
+    const cfg = cloudConfigs.find(c => c.id === selectedConfigId)
+    return cfg ? cfg.displayName : null
+  })()
+
   return (
     <div className="chat-panel">
       <div className="chat-header">
-        <span>AI CHAT</span>
-        <select 
-          className="model-selector"
-          value={selectedConfigId || ''}
-          onChange={(e) => {
-            const val = e.target.value
-            setSelectedConfigId(val.startsWith('ollama-') ? val : Number(val))
-          }}
-        >
-          {cloudConfigs.length === 0 && ollamaModels.length === 0 && (
-            <option value="">No models available</option>
-          )}
-          {cloudConfigs.length > 0 && (
-            <optgroup label="Cloud Models">
-              {cloudConfigs.map(config => (
-                <option key={config.id} value={config.id}>
-                  {config.displayName} {config.isDefault ? '⭐' : ''}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {ollamaModels.length > 0 && (
-            <optgroup label="Local (Ollama)">
-              {ollamaModels.map(model => (
-                <option key={model} value={`ollama-${model}`}>
-                  {model}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-        <button 
-          className="settings-button"
-          onClick={() => setShowConfigManager(true)}
-          title="Manage model configurations"
-        >
-          ⚙️ Settings
-        </button>
-        <button 
-          className="settings-button"
-          onClick={() => setShowMindmapModal(true)}
-          title="Analyze mindmap"
-        >
-          📊 Mindmap
-        </button>
+        <span className="chat-header-label">AI CHAT</span>
+        <div className="header-controls">
+          <select 
+            className="model-selector"
+            value={selectedConfigId || ''}
+            onChange={(e) => {
+              const val = e.target.value
+              setSelectedConfigId(val.startsWith('ollama-') ? val : Number(val))
+            }}
+          >
+            {cloudConfigs.length === 0 && ollamaModels.length === 0 && (
+              <option value="">No models available</option>
+            )}
+            {cloudConfigs.length > 0 && (
+              <optgroup label="Cloud Models">
+                {cloudConfigs.map(config => (
+                  <option key={config.id} value={config.id}>
+                    {config.displayName} {config.isDefault ? '⭐' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {ollamaModels.length > 0 && (
+              <optgroup label="Local (Ollama)">
+                {ollamaModels.map(model => (
+                  <option key={model} value={`ollama-${model}`}>
+                    {model}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button 
+            className="settings-button"
+            onClick={() => setShowConfigManager(true)}
+            title="Settings — manage model configurations"
+          >
+            ⚙️
+          </button>
+          <button 
+            className="settings-button"
+            onClick={() => setShowMindmapModal(true)}
+            title="Mindmap — analyze image"
+          >
+            📊
+          </button>
+          <button
+            className="settings-button"
+            onClick={handleAnalyze}
+            disabled={analyzing}
+            title="Analyze project — generates docs in .ai-ide/docs/"
+          >
+            {analyzing ? '⏳' : '🔬'}
+          </button>
+        </div>
       </div>
+      {analysisProgress && !analysisResult && (
+        <div className="analysis-result-banner analysis-progress-banner">
+          <span className="progress-spinner">⏳</span>
+          <span className="progress-stage">{stageLabel(analysisProgress.stage)}</span>
+          <span className="progress-message">{analysisProgress.message}</span>
+          {analysisProgress.totalFiles > 0 && analysisProgress.doneFiles > 0 && (
+            <span className="progress-count">{analysisProgress.doneFiles}/{analysisProgress.totalFiles}</span>
+          )}
+        </div>
+      )}
+      {analysisResult && (
+        <div className={`analysis-result-banner ${analysisResult.ok ? 'analysis-result-ok' : 'analysis-result-err'}`}>
+          {analysisResult.ok ? (
+            <>
+              ✅ Analysis complete — {analysisResult.result.summarizedFiles}/{analysisResult.result.totalFiles} files
+              {analysisResult.result.docsPath && <> · docs: <code>{analysisResult.result.docsPath}</code></>}
+              {analysisResult.result.errors?.length > 0 && <> · {analysisResult.result.errors.length} warning(s)</>}
+            </>
+          ) : (
+            <>❌ Analysis failed: {analysisResult.error}</>
+          )}
+          <button className="analysis-result-close" onClick={() => setAnalysisResult(null)}>×</button>
+        </div>
+      )}
       
       <ModelConfigManager 
         isOpen={showConfigManager}
@@ -292,6 +388,11 @@ const ChatPanel = ({ onFileOpen, onRefreshTree }) => {
       <div className="chat-status">
         <span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`} />
         {connected ? 'Connected' : 'Disconnected'}
+        {activeModelLabel && (
+          <span className="active-model-badge" title="Active model">
+            ⬡ {activeModelLabel}
+          </span>
+        )}
       </div>
     </div>
   )
